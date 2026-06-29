@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { MATCHES, GROUPS, type Match } from "@/lib/wc2026-data";
+import { MATCHES, CURRENT_ROUND_AR, CURRENT_ROUND_DATES_AR, type Match } from "@/lib/wc2026-data";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "ليلة الملعب — مواعيد كأس العالم 2026" },
-      { name: "description", content: "جميع مباريات كأس العالم 2026 بتوقيت سوريا (UTC+3) مع عداد تنازلي مباشر للمباراة القادمة." },
+      { name: "description", content: "جميع مباريات كأس العالم 2026 القادمة بتوقيت سوريا (UTC+3) مع عداد تنازلي مباشر." },
       { property: "og:title", content: "ليلة الملعب — كأس العالم 2026" },
       { property: "og:description", content: "مواعيد كأس العالم 2026 بتوقيت سوريا." },
     ],
@@ -14,7 +14,7 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type TabKey = "today" | "groups" | "knockout" | "search";
+type TabKey = "today" | "round" | "search";
 
 const SYRIA_TZ = "Asia/Damascus";
 
@@ -55,8 +55,9 @@ function Countdown({ target }: { target: Match | null }) {
   const now = useNow(1000);
   if (!target) {
     return (
-      <div className="text-center py-10">
-        <div className="font-[var(--font-display)] text-3xl text-[var(--gold)]">انتهت البطولة</div>
+      <div className="text-center py-10 px-4">
+        <div className="font-[var(--font-display)] text-2xl text-[var(--gold)]">انتهى هذا الدور</div>
+        <div className="text-xs text-[var(--muted-foreground)] mt-2 font-mono">بانتظار جدول الدور القادم</div>
       </div>
     );
   }
@@ -115,7 +116,7 @@ function Countdown({ target }: { target: Match | null }) {
           {date} • {time}
         </div>
         <div className="mt-1 text-xs text-[var(--muted-foreground)]">
-          {target.stadium} — {target.city}
+          {target.stadiumAr} — {target.cityAr}
         </div>
       </div>
     </div>
@@ -134,17 +135,22 @@ function StatusBadge({ status }: { status: "upcoming" | "live" | "finished" }) {
   );
 }
 
+const STAGE_LABEL: Record<Match["stage"], string> = {
+  r32: "دور الـ32",
+  r16: "ثمن النهائي",
+  qf: "ربع النهائي",
+  sf: "نصف النهائي",
+  final: "النهائي",
+};
+
 function MatchCard({ match, now }: { match: Match; now: Date }) {
   const { date, time } = fmtSyria(match.kickoffUtc);
   const status = matchStatus(match.kickoffUtc, now);
-  const stageLabel = match.group
-    ? `المجموعة ${match.group}`
-    : { r32: "دور الـ32", r16: "ثمن النهائي", qf: "ربع النهائي", sf: "نصف النهائي", final: "النهائي" }[match.stage as "r32"|"r16"|"qf"|"sf"|"final"];
 
   return (
     <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 shadow-sm">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] font-mono tracking-widest text-[var(--gold)] uppercase">{stageLabel}</span>
+        <span className="text-[10px] font-mono tracking-widest text-[var(--gold)] uppercase">{STAGE_LABEL[match.stage]}</span>
         <StatusBadge status={status} />
       </div>
 
@@ -164,15 +170,14 @@ function MatchCard({ match, now }: { match: Match; now: Date }) {
       </div>
 
       <div className="mt-3 pt-3 border-t border-[var(--border)] text-[11px] text-[var(--muted-foreground)] text-center font-mono">
-        {match.stadium} • {match.city}
+        {match.stadiumAr} • {match.cityAr}
       </div>
     </div>
   );
 }
 
 function Index() {
-  const [tab, setTab] = useState<TabKey>("today");
-  const [groupFilter, setGroupFilter] = useState<string | null>(null);
+  const [tab, setTab] = useState<TabKey>("round");
   const [query, setQuery] = useState("");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const now = useNow(1000);
@@ -184,36 +189,34 @@ function Index() {
     }
   }, [theme]);
 
-  const sorted = useMemo(
-    () => [...MATCHES].sort((a, b) => +new Date(a.kickoffUtc) - +new Date(b.kickoffUtc)),
-    []
-  );
+  // Hide finished matches everywhere (per user request).
+  const upcoming = useMemo(() => {
+    return [...MATCHES]
+      .filter((m) => matchStatus(m.kickoffUtc, now) !== "finished")
+      .sort((a, b) => +new Date(a.kickoffUtc) - +new Date(b.kickoffUtc));
+  }, [now]);
 
   const nextMatch = useMemo(
-    () => sorted.find((m) => new Date(m.kickoffUtc).getTime() > now.getTime()) ?? null,
-    [sorted, now]
+    () => upcoming.find((m) => matchStatus(m.kickoffUtc, now) === "upcoming") ?? upcoming[0] ?? null,
+    [upcoming, now]
   );
 
   const visible = useMemo(() => {
-    let list = sorted;
-    if (tab === "today") list = list.filter((m) => isSameSyriaDay(m.kickoffUtc, now));
-    else if (tab === "groups") list = list.filter((m) => m.stage === "group");
-    else if (tab === "knockout") list = list.filter((m) => m.stage !== "group");
-    if (tab === "groups" && groupFilter) list = list.filter((m) => m.group === groupFilter);
-    if (tab === "search" && query.trim()) {
+    if (tab === "today") return upcoming.filter((m) => isSameSyriaDay(m.kickoffUtc, now));
+    if (tab === "search") {
       const q = query.trim().toLowerCase();
-      list = sorted.filter((m) =>
+      if (!q) return [];
+      return upcoming.filter((m) =>
         [m.homeName, m.awayName, m.homeNameAr, m.awayNameAr].some((n) => n.toLowerCase().includes(q))
       );
     }
-    return list;
-  }, [sorted, tab, groupFilter, query, now]);
+    return upcoming;
+  }, [upcoming, tab, query, now]);
 
   const tabs: { key: TabKey; label: string }[] = [
-    { key: "today",    label: "اليوم" },
-    { key: "groups",   label: "المجموعات" },
-    { key: "knockout", label: "الإقصائي" },
-    { key: "search",   label: "بحث" },
+    { key: "today",  label: "اليوم" },
+    { key: "round",  label: CURRENT_ROUND_AR },
+    { key: "search", label: "بحث" },
   ];
 
   return (
@@ -226,7 +229,7 @@ function Index() {
               ليلة الملعب
             </h1>
             <p className="text-[10px] font-mono text-[var(--muted-foreground)] tracking-widest">
-              WORLD CUP · 2026
+              WORLD CUP · 2026 · {CURRENT_ROUND_DATES_AR}
             </p>
           </div>
           <button
@@ -251,7 +254,7 @@ function Index() {
             {tabs.map((t) => (
               <button
                 key={t.key}
-                onClick={() => { setTab(t.key); setGroupFilter(null); }}
+                onClick={() => setTab(t.key)}
                 className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg transition-colors ${
                   tab === t.key
                     ? "bg-[var(--gold)] text-[var(--primary-foreground)]"
@@ -263,33 +266,6 @@ function Index() {
             ))}
           </div>
         </nav>
-
-        {/* Group filter strip */}
-        {tab === "groups" && (
-          <div className="px-3 pt-3 tab-enter">
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-              <button
-                onClick={() => setGroupFilter(null)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-mono border transition-colors ${
-                  groupFilter === null
-                    ? "bg-[var(--gold)] text-[var(--primary-foreground)] border-[var(--gold)]"
-                    : "border-[var(--border)] text-[var(--muted-foreground)]"
-                }`}
-              >الكل</button>
-              {GROUPS.map((g) => (
-                <button
-                  key={g}
-                  onClick={() => setGroupFilter(g)}
-                  className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-mono border transition-colors ${
-                    groupFilter === g
-                      ? "bg-[var(--gold)] text-[var(--primary-foreground)] border-[var(--gold)]"
-                      : "border-[var(--border)] text-[var(--muted-foreground)]"
-                  }`}
-                >{g}</button>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Search */}
         {tab === "search" && (
@@ -305,18 +281,23 @@ function Index() {
         )}
 
         {/* Match list */}
-        <main key={tab + (groupFilter ?? "")} className="px-3 py-4 flex flex-col gap-3 tab-enter flex-1">
+        <main key={tab} className="px-3 py-4 flex flex-col gap-3 tab-enter flex-1">
           {visible.length === 0 ? (
             <div className="text-center text-[var(--muted-foreground)] py-12 text-sm">
-              {tab === "today" ? "لا توجد مباريات اليوم." : tab === "search" && !query ? "اكتب اسم منتخب للبحث." : "لا توجد نتائج."}
+              {tab === "today"
+                ? "لا توجد مباريات اليوم."
+                : tab === "search" && !query
+                ? "اكتب اسم منتخب للبحث."
+                : "لا توجد مباريات قادمة."}
             </div>
           ) : (
             visible.map((m) => <MatchCard key={m.id} match={m} now={now} />)
           )}
         </main>
 
-        <footer className="px-4 py-5 text-center text-[10px] font-mono text-[var(--muted-foreground)] border-t border-[var(--border)]">
-          جميع التوقيتات بتوقيت دمشق (UTC+3)
+        <footer className="px-4 py-5 text-center text-[10px] font-mono text-[var(--muted-foreground)] border-t border-[var(--border)] space-y-1">
+          <div>جميع التوقيتات بتوقيت دمشق (UTC+3)</div>
+          <div className="opacity-70">سيتم تحديث الجدول بمباريات الدور القادم فور انتهاء {CURRENT_ROUND_AR}</div>
         </footer>
       </div>
     </div>
