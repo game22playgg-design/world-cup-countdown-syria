@@ -7,7 +7,7 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "موعد — مباريات كأس العالم 2026" },
       { name: "description", content: "جميع مباريات كأس العالم 2026 القادمة بتوقيت سوريا (UTC+3) مع عداد تنازلي مباشر." },
-      { property: "og:title", content: "ليلة الملعب — كأس العالم 2026" },
+      { property: "og:title", content: "موعد — كأس العالم 2026" },
       { property: "og:description", content: "مواعيد كأس العالم 2026 بتوقيت سوريا." },
     ],
   }),
