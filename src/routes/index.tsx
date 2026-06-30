@@ -5,9 +5,9 @@ import { MATCHES, CURRENT_ROUND_AR, CURRENT_ROUND_DATES_AR, type Match } from "@
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ليلة الملعب — مواعيد كأس العالم 2026" },
+      { title: "موعد — مباريات كأس العالم 2026" },
       { name: "description", content: "جميع مباريات كأس العالم 2026 القادمة بتوقيت سوريا (UTC+3) مع عداد تنازلي مباشر." },
-      { property: "og:title", content: "ليلة الملعب — كأس العالم 2026" },
+      { property: "og:title", content: "موعد — كأس العالم 2026" },
       { property: "og:description", content: "مواعيد كأس العالم 2026 بتوقيت سوريا." },
     ],
   }),
@@ -231,7 +231,7 @@ function Index() {
         <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 border-b border-[var(--border)]">
           <div className="min-w-0">
             <h1 className="font-[var(--font-display)] tracking-wider text-xl text-[var(--foreground)] truncate">
-              ليلة الملعب
+              موعد
             </h1>
             <p className="text-[10px] font-mono text-[var(--muted-foreground)] tracking-widest">
               WORLD CUP · 2026 · {CURRENT_ROUND_DATES_AR}
