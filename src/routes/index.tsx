@@ -226,8 +226,10 @@ function Index() {
   ];
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <div className="mx-auto max-w-[480px] min-h-screen flex flex-col">
+    <>
+      <SplashScreen />
+      <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
+        <div className="mx-auto max-w-[480px] min-h-screen flex flex-col">
         {/* Top bar */}
         <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 border-b border-[var(--border)]">
           <div className="min-w-0">
