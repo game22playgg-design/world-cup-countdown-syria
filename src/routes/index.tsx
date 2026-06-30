@@ -23,9 +23,14 @@ function fmtSyria(iso: string) {
   const date = new Intl.DateTimeFormat("ar-SY", {
     timeZone: SYRIA_TZ, weekday: "short", day: "numeric", month: "long",
   }).format(d);
-  const time = new Intl.DateTimeFormat("ar-SY", {
-    timeZone: SYRIA_TZ, hour: "2-digit", minute: "2-digit", hour12: false,
-  }).format(d);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: SYRIA_TZ, hour: "2-digit", minute: "2-digit", hour12: true,
+  }).formatToParts(d);
+  const hour = parts.find((p) => p.type === "hour")?.value ?? "";
+  const minute = parts.find((p) => p.type === "minute")?.value ?? "";
+  const dp = parts.find((p) => p.type === "dayPeriod")?.value?.toUpperCase() ?? "";
+  const period = dp === "AM" ? "صباحاً" : "مساءً";
+  const time = `${hour}:${minute} ${period}`;
   return { date, time };
 }
 
