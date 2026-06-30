@@ -107,8 +107,8 @@
 @utility countdown-digit {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  animation: gold-pulse 1s ease-in-out infinite;
   color: var(--gold);
+  text-shadow: 0 0 10px rgba(201, 162, 39, 0.25), 0 0 2px rgba(201, 162, 39, 0.4);
 }
 @utility tab-enter {
   animation: tab-fade 150ms ease-out;
