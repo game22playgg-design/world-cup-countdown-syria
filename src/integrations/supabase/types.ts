@@ -14,13 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      match_results: {
+        Row: {
+          away_score: number
+          finished_at: string
+          home_score: number
+          match_id: string
+          updated_at: string
+        }
+        Insert: {
+          away_score: number
+          finished_at?: string
+          home_score: number
+          match_id: string
+          updated_at?: string
+        }
+        Update: {
+          away_score?: number
+          finished_at?: string
+          home_score?: number
+          match_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      predictions: {
+        Row: {
+          away_score: number
+          home_score: number
+          id: string
+          locked_at: string
+          match_id: string
+          points: number | null
+          user_id: string
+        }
+        Insert: {
+          away_score: number
+          home_score: number
+          id?: string
+          locked_at?: string
+          match_id: string
+          points?: number | null
+          user_id: string
+        }
+        Update: {
+          away_score?: number
+          home_score?: number
+          id?: string
+          locked_at?: string
+          match_id?: string
+          points?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          is_admin: boolean
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          is_admin?: boolean
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_admin?: boolean
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      leaderboard: {
+        Row: {
+          exact_count: number | null
+          finished_count: number | null
+          total_points: number | null
+          user_id: string | null
+          username: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      calc_points: {
+        Args: { aa: number; ah: number; pa: number; ph: number }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
