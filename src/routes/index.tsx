@@ -2,20 +2,26 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { MATCHES, CURRENT_ROUND_AR, CURRENT_ROUND_DATES_AR, type Match } from "@/lib/wc2026-data";
 import SplashScreen from "@/components/SplashScreen";
+import UsernameGate from "@/components/UsernameGate";
+import PredictionBox from "@/components/PredictionBox";
+import Leaderboard from "@/components/Leaderboard";
+import AdminPanel from "@/components/AdminPanel";
+import { useCurrentUser, signOut } from "@/lib/auth-user";
+import { useMatchResults, useMyPredictions } from "@/lib/predictions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "موعد — مباريات كأس العالم 2026" },
-      { name: "description", content: "جميع مباريات كأس العالم 2026 القادمة بتوقيت سوريا (UTC+3) مع عداد تنازلي مباشر." },
+      { name: "description", content: "توقّع نتائج كأس العالم 2026 وتنافس على لوحة المتصدرين — بتوقيت سوريا." },
       { property: "og:title", content: "موعد — كأس العالم 2026" },
-      { property: "og:description", content: "مواعيد كأس العالم 2026 بتوقيت سوريا." },
+      { property: "og:description", content: "توقعات ولوحة متصدرين لمباريات كأس العالم 2026." },
     ],
   }),
   component: Index,
 });
 
-type TabKey = "today" | "round" | "search";
+type TabKey = "today" | "round" | "leaderboard" | "search";
 
 const SYRIA_TZ = "Asia/Damascus";
 
@@ -129,16 +135,14 @@ function Countdown({ target }: { target: Match | null }) {
   );
 }
 
-function StatusBadge({ status }: { status: "upcoming" | "live" | "finished" }) {
+function StatusBadge({ status, hasResult }: { status: "upcoming" | "live" | "finished"; hasResult: boolean }) {
   const map = {
     upcoming: { label: "قادمة", cls: "bg-[var(--secondary)] text-[var(--muted-foreground)]" },
     live:     { label: "جارية", cls: "bg-[var(--stadium-red)] text-white animate-pulse" },
-    finished: { label: "انتهت", cls: "bg-transparent border border-[var(--border)] text-[var(--muted-foreground)]" },
+    finished: { label: hasResult ? "انتهت" : "بانتظار النتيجة", cls: "bg-transparent border border-[var(--border)] text-[var(--muted-foreground)]" },
   } as const;
   const s = map[status];
-  return (
-    <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${s.cls}`}>{s.label}</span>
-  );
+  return <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${s.cls}`}>{s.label}</span>;
 }
 
 const STAGE_LABEL: Record<Match["stage"], string> = {
@@ -149,7 +153,13 @@ const STAGE_LABEL: Record<Match["stage"], string> = {
   final: "النهائي",
 };
 
-function MatchCard({ match, now }: { match: Match; now: Date }) {
+function MatchCard({
+  match, now, userId, prediction, result,
+}: {
+  match: Match; now: Date; userId: string | null;
+  prediction: ReturnType<typeof useMyPredictions>["predictions"][string] | undefined;
+  result: ReturnType<typeof useMatchResults>[string] | undefined;
+}) {
   const { date, time } = fmtSyria(match.kickoffUtc);
   const status = matchStatus(match.kickoffUtc, now);
 
@@ -157,7 +167,7 @@ function MatchCard({ match, now }: { match: Match; now: Date }) {
     <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 shadow-sm">
       <div className="flex items-center justify-between mb-3">
         <span className="text-[10px] font-mono tracking-widest text-[var(--gold)] uppercase">{STAGE_LABEL[match.stage]}</span>
-        <StatusBadge status={status} />
+        <StatusBadge status={status} hasResult={!!result} />
       </div>
 
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
@@ -178,6 +188,8 @@ function MatchCard({ match, now }: { match: Match; now: Date }) {
       <div className="mt-3 pt-3 border-t border-[var(--border)] text-[11px] text-[var(--muted-foreground)] text-center font-mono">
         {match.stadiumAr} • {match.cityAr}
       </div>
+
+      <PredictionBox match={match} userId={userId} prediction={prediction} result={result} now={now} />
     </div>
   );
 }
@@ -186,7 +198,13 @@ function Index() {
   const [tab, setTab] = useState<TabKey>("round");
   const [query, setQuery] = useState("");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [showGate, setShowGate] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const now = useNow(1000);
+  const { profile, loading } = useCurrentUser();
+  const results = useMatchResults();
+  const { predictions } = useMyPredictions(profile?.id ?? null);
 
   useEffect(() => {
     if (typeof document !== "undefined") {
@@ -195,120 +213,190 @@ function Index() {
     }
   }, [theme]);
 
-  // Hide finished matches everywhere (per user request).
-  const upcoming = useMemo(() => {
-    return [...MATCHES]
-      .filter((m) => matchStatus(m.kickoffUtc, now) !== "finished")
-      .sort((a, b) => +new Date(a.kickoffUtc) - +new Date(b.kickoffUtc));
-  }, [now]);
-
-  const nextMatch = useMemo(
-    () => upcoming.find((m) => matchStatus(m.kickoffUtc, now) === "upcoming") ?? upcoming[0] ?? null,
-    [upcoming, now]
+  // Sort all matches; keep finished visible (needed for prediction results view)
+  const allMatches = useMemo(
+    () => [...MATCHES].sort((a, b) => +new Date(a.kickoffUtc) - +new Date(b.kickoffUtc)),
+    []
   );
 
+  const upcomingOnly = useMemo(
+    () => allMatches.filter((m) => matchStatus(m.kickoffUtc, now) !== "finished"),
+    [allMatches, now]
+  );
+
+  const nextMatch = useMemo(
+    () => upcomingOnly.find((m) => matchStatus(m.kickoffUtc, now) === "upcoming") ?? upcomingOnly[0] ?? null,
+    [upcomingOnly, now]
+  );
+
+  // My points
+  const myTotal = useMemo(() => {
+    let t = 0;
+    Object.values(predictions).forEach((p) => { if (p.points != null) t += p.points; });
+    return t;
+  }, [predictions]);
+
   const visible = useMemo(() => {
-    if (tab === "today") return upcoming.filter((m) => isSameSyriaDay(m.kickoffUtc, now));
+    if (tab === "today") return allMatches.filter((m) => isSameSyriaDay(m.kickoffUtc, now));
     if (tab === "search") {
       const q = query.trim().toLowerCase();
       if (!q) return [];
-      return upcoming.filter((m) =>
+      return allMatches.filter((m) =>
         [m.homeName, m.awayName, m.homeNameAr, m.awayNameAr].some((n) => n.toLowerCase().includes(q))
       );
     }
-    return upcoming;
-  }, [upcoming, tab, query, now]);
+    return allMatches;
+  }, [allMatches, tab, query, now]);
 
   const tabs: { key: TabKey; label: string }[] = [
-    { key: "today",  label: "اليوم" },
-    { key: "round",  label: CURRENT_ROUND_AR },
-    { key: "search", label: "بحث" },
+    { key: "today",       label: "اليوم" },
+    { key: "round",       label: CURRENT_ROUND_AR },
+    { key: "leaderboard", label: "المتصدرون" },
+    { key: "search",      label: "بحث" },
   ];
 
   return (
     <>
       <SplashScreen />
+      {showGate && <UsernameGate onDone={() => setShowGate(false)} />}
+      {showAdmin && profile?.is_admin && <AdminPanel onClose={() => setShowAdmin(false)} />}
       <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
         <div className="mx-auto max-w-[480px] min-h-screen flex flex-col">
-        {/* Top bar */}
-        <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 border-b border-[var(--border)]">
-          <div className="min-w-0">
-            <h1 className="font-[var(--font-display)] tracking-wider text-xl text-[var(--foreground)] truncate">
-              موعد
-            </h1>
-            <p className="text-[10px] font-mono text-[var(--muted-foreground)] tracking-widest">
-              WORLD CUP · 2026 · {CURRENT_ROUND_DATES_AR}
-            </p>
-          </div>
-          <button
-            onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
-            className="shrink-0 h-9 w-9 grid place-items-center rounded-full border border-[var(--border)] bg-[var(--card)] hover:border-[var(--gold)] transition-colors"
-            aria-label="تبديل الوضع"
-          >
-            {theme === "dark" ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-            )}
-          </button>
-        </header>
-
-        {/* Hero countdown */}
-        <Countdown target={nextMatch} />
-
-        {/* Tabs */}
-        <nav className="px-3 sticky top-0 z-10 bg-[var(--background)]/95 backdrop-blur border-b border-[var(--border)]">
-          <div className="flex gap-1 py-2">
-            {tabs.map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg transition-colors ${
-                  tab === t.key
-                    ? "bg-[var(--gold)] text-[var(--primary-foreground)]"
-                    : "bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </nav>
-
-        {/* Search */}
-        {tab === "search" && (
-          <div className="px-3 pt-3 tab-enter">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="ابحث عن منتخب (عربي أو إنجليزي)…"
-              className="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-[var(--gold)] placeholder:text-[var(--muted-foreground)]"
-            />
-          </div>
-        )}
-
-        {/* Match list */}
-        <main key={tab} className="px-3 py-4 flex flex-col gap-3 tab-enter flex-1">
-          {visible.length === 0 ? (
-            <div className="text-center text-[var(--muted-foreground)] py-12 text-sm">
-              {tab === "today"
-                ? "لا توجد مباريات اليوم."
-                : tab === "search" && !query
-                ? "اكتب اسم منتخب للبحث."
-                : "لا توجد مباريات قادمة."}
+          {/* Top bar */}
+          <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 border-b border-[var(--border)]">
+            <div className="min-w-0">
+              <h1 className="font-[var(--font-display)] tracking-wider text-xl text-[var(--foreground)] truncate">
+                موعد
+              </h1>
+              <p className="text-[10px] font-mono text-[var(--muted-foreground)] tracking-widest">
+                WORLD CUP · 2026 · {CURRENT_ROUND_DATES_AR}
+              </p>
             </div>
-          ) : (
-            visible.map((m) => <MatchCard key={m.id} match={m} now={now} />)
-          )}
-        </main>
+            <div className="flex items-center gap-2 shrink-0">
+              {/* User status */}
+              {!loading && (
+                profile ? (
+                  <button
+                    onClick={() => setMenuOpen((v) => !v)}
+                    className="flex items-center gap-2 h-9 px-3 rounded-full border border-[var(--border)] bg-[var(--card)] hover:border-[var(--gold)] transition-colors"
+                  >
+                    <span className="text-xs font-bold truncate max-w-[80px]">{profile.username}</span>
+                    <span className="text-[10px] font-mono text-[var(--gold)]">{myTotal}</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowGate(true)}
+                    className="h-9 px-3 rounded-full border border-[var(--gold)] bg-[var(--gold)]/10 text-[var(--gold)] text-xs font-bold"
+                  >
+                    دخول
+                  </button>
+                )
+              )}
+              <button
+                onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+                className="h-9 w-9 grid place-items-center rounded-full border border-[var(--border)] bg-[var(--card)] hover:border-[var(--gold)] transition-colors"
+                aria-label="تبديل الوضع"
+              >
+                {theme === "dark" ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                )}
+              </button>
+            </div>
+          </header>
 
-        <footer className="px-4 py-5 text-center text-[10px] font-mono text-[var(--muted-foreground)] border-t border-[var(--border)] space-y-1">
-          <div>جميع التوقيتات بتوقيت دمشق (UTC+3)</div>
-          <div className="opacity-70">سيتم تحديث الجدول بمباريات الدور القادم فور انتهاء {CURRENT_ROUND_AR}</div>
-        </footer>
+          {menuOpen && profile && (
+            <div className="px-4 py-3 border-b border-[var(--border)] bg-[var(--card)] flex items-center justify-between text-xs">
+              <div>
+                <div className="text-[var(--muted-foreground)]">مجموع نقاطك</div>
+                <div className="font-mono text-lg font-bold text-[var(--gold)]">{myTotal}</div>
+              </div>
+              <div className="flex gap-2">
+                {profile.is_admin && (
+                  <button onClick={() => { setShowAdmin(true); setMenuOpen(false); }}
+                    className="px-3 py-1.5 rounded bg-[var(--gold)]/20 text-[var(--gold)] text-xs font-bold">
+                    المشرف
+                  </button>
+                )}
+                <button onClick={async () => { await signOut(); setMenuOpen(false); }}
+                  className="px-3 py-1.5 rounded border border-[var(--border)] text-[var(--muted-foreground)] text-xs">
+                  خروج
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Hero countdown */}
+          <Countdown target={nextMatch} />
+
+          {/* Tabs */}
+          <nav className="px-3 sticky top-0 z-10 bg-[var(--background)]/95 backdrop-blur border-b border-[var(--border)]">
+            <div className="flex gap-1 py-2">
+              {tabs.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={`flex-1 py-2 px-1 text-[11px] font-bold rounded-lg transition-colors ${
+                    tab === t.key
+                      ? "bg-[var(--gold)] text-[var(--primary-foreground)]"
+                      : "bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </nav>
+
+          {tab === "leaderboard" ? (
+            <main key="lb" className="tab-enter flex-1 py-3">
+              <Leaderboard currentUserId={profile?.id ?? null} />
+            </main>
+          ) : (
+            <>
+              {tab === "search" && (
+                <div className="px-3 pt-3 tab-enter">
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="ابحث عن منتخب (عربي أو إنجليزي)…"
+                    className="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-[var(--gold)] placeholder:text-[var(--muted-foreground)]"
+                  />
+                </div>
+              )}
+              <main key={tab} className="px-3 py-4 flex flex-col gap-3 tab-enter flex-1">
+                {visible.length === 0 ? (
+                  <div className="text-center text-[var(--muted-foreground)] py-12 text-sm">
+                    {tab === "today"
+                      ? "لا توجد مباريات اليوم."
+                      : tab === "search" && !query
+                      ? "اكتب اسم منتخب للبحث."
+                      : "لا توجد مباريات."}
+                  </div>
+                ) : (
+                  visible.map((m) => (
+                    <MatchCard
+                      key={m.id}
+                      match={m}
+                      now={now}
+                      userId={profile?.id ?? null}
+                      prediction={predictions[m.id]}
+                      result={results[m.id]}
+                    />
+                  ))
+                )}
+              </main>
+            </>
+          )}
+
+          <footer className="px-4 py-5 text-center text-[10px] font-mono text-[var(--muted-foreground)] border-t border-[var(--border)] space-y-1">
+            <div>جميع التوقيتات بتوقيت دمشق (UTC+3)</div>
+            <div className="opacity-70">3 نقاط للنتيجة الدقيقة • 1 نقطة للفائز الصحيح • 0 للخطأ</div>
+          </footer>
+        </div>
       </div>
-    </div>
     </>
   );
 }
