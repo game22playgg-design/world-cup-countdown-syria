@@ -120,16 +120,18 @@ export function useLeaderboard() {
 
     const load = async () => {
       const [{ data: profiles }, { data: preds }] = await Promise.all([
-        supabase.from("profiles").select("id, username"),
+        supabase.from("profiles").select("id, username, is_admin, bonus_points"),
         supabase.from("predictions").select("user_id, match_id, points"),
       ]);
 
       const byUser: Record<string, LeaderboardRow> = {};
-      (profiles ?? []).forEach((p) => {
+      (profiles ?? []).forEach((p: any) => {
+        // Exclude admins from the leaderboard entirely
+        if (p.is_admin) return;
         byUser[p.id] = {
           user_id: p.id,
           username: p.username,
-          total_points: 0,
+          total_points: p.bonus_points ?? 0,
           exact_count: 0,
           finished_count: 0,
           per_round: {},
@@ -146,9 +148,6 @@ export function useLeaderboard() {
         if (p.points === 3) row.exact_count += 1;
       });
 
-      // Filter out users with 0 finished predictions AND 0 predictions submitted (empty rows)
-      // Per spec: new users show 0 across columns at bottom — keep all with any activity or profile.
-      // Sort by total desc, then exact_count desc.
       const list = Object.values(byUser).sort((a, b) => {
         if (b.total_points !== a.total_points) return b.total_points - a.total_points;
         return b.exact_count - a.exact_count;
