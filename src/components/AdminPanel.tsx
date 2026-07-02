@@ -1,9 +1,16 @@
 import { useState } from "react";
 import { MATCHES } from "@/lib/wc2026-data";
-import { upsertMatchResult, deleteMatchResult, useMatchResults } from "@/lib/predictions";
+import {
+  upsertMatchResult,
+  deleteMatchResult,
+  useMatchResults,
+  useLeaderboard,
+  setUserBonusPoints,
+} from "@/lib/predictions";
 
 export default function AdminPanel({ onClose }: { onClose: () => void }) {
   const results = useMatchResults();
+  const [view, setView] = useState<"results" | "points">("results");
   return (
     <div className="fixed inset-0 z-30 bg-[var(--background)]/95 backdrop-blur-sm overflow-y-auto">
       <div className="mx-auto max-w-[480px] p-4">
@@ -11,14 +18,43 @@ export default function AdminPanel({ onClose }: { onClose: () => void }) {
           <h2 className="font-[var(--font-display)] text-2xl text-[var(--gold)] tracking-wider">لوحة المشرف</h2>
           <button onClick={onClose} className="text-[var(--muted-foreground)] text-sm">إغلاق</button>
         </div>
-        <p className="text-xs text-[var(--muted-foreground)] mb-4">
-          أدخل النتيجة النهائية لكل مباراة. تُحسب نقاط اللاعبين تلقائياً.
-        </p>
-        <div className="space-y-3">
-          {MATCHES.map((m) => (
-            <ResultRow key={m.id} matchId={m.id} homeName={m.homeNameAr} awayName={m.awayNameAr} existing={results[m.id]} />
+
+        <div className="flex gap-1 mb-4">
+          {(["results", "points"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`flex-1 py-2 rounded-lg text-xs font-bold ${
+                view === v
+                  ? "bg-[var(--gold)] text-[var(--primary-foreground)]"
+                  : "bg-[var(--card)] text-[var(--muted-foreground)]"
+              }`}
+            >
+              {v === "results" ? "النتائج" : "نقاط اللاعبين"}
+            </button>
           ))}
         </div>
+
+        {view === "results" ? (
+          <>
+            <p className="text-xs text-[var(--muted-foreground)] mb-4">
+              أدخل النتيجة النهائية لكل مباراة. تُحسب نقاط اللاعبين تلقائياً.
+            </p>
+            <div className="space-y-3">
+              {MATCHES.map((m) => (
+                <ResultRow
+                  key={m.id}
+                  matchId={m.id}
+                  homeName={m.homeNameAr}
+                  awayName={m.awayNameAr}
+                  existing={results[m.id]}
+                />
+              ))}
+            </div>
+          </>
+        ) : (
+          <PointsEditor />
+        )}
       </div>
     </div>
   );
@@ -54,16 +90,75 @@ function ResultRow({
   return (
     <div className="bg-[var(--card)] border border-[var(--border)] rounded-lg p-3">
       <div className="text-xs text-center mb-2">{homeName} <span className="text-[var(--muted-foreground)]">vs</span> {awayName}</div>
-      <div dir="ltr" className="flex items-center justify-center gap-2">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 mb-2">
         <input type="number" min="0" value={h} onChange={(e) => setH(e.target.value)}
-          className="w-14 h-10 text-center font-mono bg-[var(--background)] border border-[var(--border)] rounded" />
+          className="h-10 text-center font-mono bg-[var(--background)] border border-[var(--border)] rounded" />
         <span>-</span>
         <input type="number" min="0" value={a} onChange={(e) => setA(e.target.value)}
-          className="w-14 h-10 text-center font-mono bg-[var(--background)] border border-[var(--border)] rounded" />
+          className="h-10 text-center font-mono bg-[var(--background)] border border-[var(--border)] rounded" />
+      </div>
+      <div className="flex items-center justify-center gap-2">
         <button onClick={save} disabled={busy} className="bg-[var(--gold)] text-[var(--primary-foreground)] px-3 py-1.5 rounded text-xs font-bold">حفظ</button>
         {existing && <button onClick={clear} disabled={busy} className="text-[var(--stadium-red)] text-xs">حذف</button>}
         {msg && <span className="text-[var(--gold)] text-xs">{msg}</span>}
       </div>
+    </div>
+  );
+}
+
+function PointsEditor() {
+  const rows = useLeaderboard();
+  if (rows.length === 0) {
+    return <div className="text-center text-[var(--muted-foreground)] text-sm py-6">لا يوجد لاعبون</div>;
+  }
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-[var(--muted-foreground)] mb-2">
+        عدّل النقاط الإضافية (bonus) لكل لاعب — تُضاف إلى مجموع نقاطه.
+      </p>
+      {rows.map((r) => (
+        <PointsRow key={r.user_id} userId={r.user_id} username={r.username} total={r.total_points} />
+      ))}
+    </div>
+  );
+}
+
+function PointsRow({ userId, username, total }: { userId: string; username: string; total: number }) {
+  const [val, setVal] = useState<string>("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const save = async () => {
+    const n = parseInt(val, 10);
+    if (isNaN(n)) return;
+    setBusy(true);
+    const { error } = await setUserBonusPoints(userId, n);
+    setBusy(false);
+    setMsg(error ? "خطأ" : "✓");
+    setTimeout(() => setMsg(null), 1500);
+  };
+
+  return (
+    <div className="bg-[var(--card)] border border-[var(--border)] rounded-lg p-3 flex items-center gap-3">
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-bold truncate">{username}</div>
+        <div className="text-[10px] font-mono text-[var(--muted-foreground)]">إجمالي حالي: {total}</div>
+      </div>
+      <input
+        type="number"
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        placeholder="0"
+        className="w-16 h-9 text-center font-mono bg-[var(--background)] border border-[var(--border)] rounded"
+      />
+      <button
+        onClick={save}
+        disabled={busy}
+        className="bg-[var(--gold)] text-[var(--primary-foreground)] px-3 py-1.5 rounded text-xs font-bold"
+      >
+        تعيين
+      </button>
+      {msg && <span className="text-[var(--gold)] text-xs">{msg}</span>}
     </div>
   );
 }
