@@ -70,19 +70,25 @@ export type Database = {
       }
       profiles: {
         Row: {
+          bonus_points: number
           created_at: string
+          email: string | null
           id: string
           is_admin: boolean
           username: string
         }
         Insert: {
+          bonus_points?: number
           created_at?: string
+          email?: string | null
           id: string
           is_admin?: boolean
           username: string
         }
         Update: {
+          bonus_points?: number
           created_at?: string
+          email?: string | null
           id?: string
           is_admin?: boolean
           username?: string
