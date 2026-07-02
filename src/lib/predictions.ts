@@ -110,6 +110,11 @@ export async function deleteMatchResult(matchId: string) {
   return { error: error?.message };
 }
 
+export async function setUserBonusPoints(userId: string, bonus: number) {
+  const { error } = await supabase.from("profiles").update({ bonus_points: bonus }).eq("id", userId);
+  return { error: error?.message };
+}
+
 // Leaderboard: aggregate predictions per user + per round from all predictions
 export function useLeaderboard() {
   const [rows, setRows] = useState<LeaderboardRow[]>([]);
