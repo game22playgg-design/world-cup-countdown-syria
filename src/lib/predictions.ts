@@ -2,6 +2,15 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { MATCHES, type Match } from "./wc2026-data";
 
+export async function fetchUserPredictions(userId: string): Promise<Prediction[]> {
+  const { data } = await supabase
+    .from("predictions")
+    .select("match_id, home_score, away_score, points, locked_at")
+    .eq("user_id", userId);
+  return (data ?? []) as Prediction[];
+}
+
+
 export interface Prediction {
   match_id: string;
   home_score: number;

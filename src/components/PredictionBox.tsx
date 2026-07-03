@@ -8,68 +8,31 @@ interface Props {
   prediction: Prediction | undefined;
   result: MatchResult | undefined;
   now: Date;
+  onRequireLogin?: () => void;
 }
 
-export default function PredictionBox({ match, userId, prediction, result, now }: Props) {
+/**
+ * Handles the *input* flow only. The parent MatchCard renders the
+ * "Final Result" and "Your Prediction" blocks once data exists.
+ * This component shows either:
+ *   - a login CTA (guest)
+ *   - "انتهى وقت التوقع" (kickoff passed, no prediction)
+ *   - the input form (open, no prediction yet)
+ *   - nothing (prediction already submitted — card shows it)
+ */
+export default function PredictionBox({ match, userId, prediction, result, now, onRequireLogin }: Props) {
   const kickoff = new Date(match.kickoffUtc).getTime();
   const kickedOff = now.getTime() >= kickoff;
+
   const [homeStr, setHomeStr] = useState<string>("");
   const [awayStr, setAwayStr] = useState<string>("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Finished: show comparison + points
-  if (result && prediction) {
-    const pts = prediction.points ?? 0;
-    const color = pts === 3 ? "text-[var(--gold)]" : pts === 1 ? "text-[#86ac6f]" : "text-[var(--muted-foreground)]";
-    return (
-      <div className="mt-3 pt-3 border-t border-[var(--border)]">
-        <div className="grid grid-cols-2 gap-2 text-center">
-          <div className="bg-[var(--background)] rounded-lg py-2">
-            <div className="text-[9px] text-[var(--muted-foreground)] font-mono uppercase">توقعك</div>
-            <div dir="ltr" className="font-mono font-bold text-lg mt-1">
-              {prediction.home_score} - {prediction.away_score}
-            </div>
-          </div>
-          <div className="bg-[var(--background)] rounded-lg py-2">
-            <div className="text-[9px] text-[var(--muted-foreground)] font-mono uppercase">النتيجة</div>
-            <div dir="ltr" className="font-mono font-bold text-lg mt-1">
-              {result.home_score} - {result.away_score}
-            </div>
-          </div>
-        </div>
-        <div className={`text-center mt-2 font-[var(--font-display)] text-lg tracking-wider ${color}`}>
-          {pts} {pts === 1 ? "نقطة" : "نقاط"}
-        </div>
-      </div>
-    );
-  }
-
-  if (result && !prediction) {
-    return (
-      <div className="mt-3 pt-3 border-t border-[var(--border)] text-center">
-        <div className="text-xs text-[var(--muted-foreground)]">
-          النتيجة: <span dir="ltr" className="font-mono font-bold text-[var(--foreground)]">{result.home_score} - {result.away_score}</span>
-        </div>
-        <div className="text-[10px] text-[var(--muted-foreground)] mt-1">لم تتوقع هذه المباراة</div>
-      </div>
-    );
-  }
-
-  // Locked view helper — mirror card layout: home under home flag (right in RTL)
-  const LockedRow = ({ h, a, label }: { h: number; a: number; label: string }) => (
-    <div className="mt-3 pt-3 border-t border-[var(--border)]">
-      <div className="text-[10px] text-[var(--muted-foreground)] font-mono uppercase text-center mb-2">{label}</div>
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-        <div className="text-center font-mono font-bold text-2xl text-[var(--gold)]">{h}</div>
-        <div className="text-[var(--muted-foreground)] font-bold">-</div>
-        <div className="text-center font-mono font-bold text-2xl text-[var(--gold)]">{a}</div>
-      </div>
-    </div>
-  );
+  // Prediction already made or result posted — parent renders the display, we render nothing here.
+  if (prediction || result) return null;
 
   if (kickedOff) {
-    if (prediction) return <LockedRow h={prediction.home_score} a={prediction.away_score} label="توقعك (مقفل)" />;
     return (
       <div className="mt-3 pt-3 border-t border-[var(--border)] text-center text-xs text-[var(--muted-foreground)]">
         انتهى وقت التوقع
@@ -77,11 +40,24 @@ export default function PredictionBox({ match, userId, prediction, result, now }
     );
   }
 
-  if (prediction) return <LockedRow h={prediction.home_score} a={prediction.away_score} label="توقعك (مقفل)" />;
+  // Guest — prompt sign-in
+  if (!userId) {
+    return (
+      <div className="mt-3 pt-3 border-t border-[var(--border)] text-center">
+        <p className="text-xs text-[var(--muted-foreground)] mb-2">
+          يجب تسجيل الدخول لإضافة توقع
+        </p>
+        <button
+          onClick={() => onRequireLogin?.()}
+          className="inline-flex items-center justify-center gap-2 bg-[var(--gold)] text-[var(--primary-foreground)] font-bold px-4 py-2 rounded-lg text-xs"
+        >
+          سجّل الدخول للتوقع
+        </button>
+      </div>
+    );
+  }
 
-  // Input form — home input under home flag (right in RTL), away under away flag (left)
   const submit = async () => {
-    if (!userId) return;
     const hn = parseInt(homeStr, 10);
     const an = parseInt(awayStr, 10);
     if (isNaN(hn) || isNaN(an) || hn < 0 || an < 0 || hn > 20 || an > 20) {
@@ -98,7 +74,7 @@ export default function PredictionBox({ match, userId, prediction, result, now }
   return (
     <div className="mt-3 pt-3 border-t border-[var(--border)]">
       <div className="text-[10px] text-[var(--muted-foreground)] font-mono uppercase text-center mb-2">توقعك</div>
-      {/* Matches the card's grid: col-1 = home (right in RTL), col-3 = away (left in RTL) */}
+      {/* Matches card grid: col-1 = home (right in RTL), col-3 = away (left in RTL) */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
         <div className="flex justify-center">
           <input
@@ -108,7 +84,7 @@ export default function PredictionBox({ match, userId, prediction, result, now }
             inputMode="numeric"
             value={homeStr}
             onChange={(e) => setHomeStr(e.target.value)}
-            disabled={!userId || busy}
+            disabled={busy}
             placeholder="0"
             aria-label={`توقع ${match.homeNameAr}`}
             className="w-16 h-12 text-center font-mono font-bold text-xl bg-[var(--background)] border border-[var(--border)] rounded-lg focus:outline-none focus:border-[var(--gold)]"
@@ -123,7 +99,7 @@ export default function PredictionBox({ match, userId, prediction, result, now }
             inputMode="numeric"
             value={awayStr}
             onChange={(e) => setAwayStr(e.target.value)}
-            disabled={!userId || busy}
+            disabled={busy}
             placeholder="0"
             aria-label={`توقع ${match.awayNameAr}`}
             className="w-16 h-12 text-center font-mono font-bold text-xl bg-[var(--background)] border border-[var(--border)] rounded-lg focus:outline-none focus:border-[var(--gold)]"
@@ -132,16 +108,11 @@ export default function PredictionBox({ match, userId, prediction, result, now }
       </div>
       <button
         onClick={submit}
-        disabled={!userId || busy}
+        disabled={busy}
         className="w-full mt-3 bg-[var(--gold)] text-[var(--primary-foreground)] font-bold px-4 py-2 rounded-lg text-sm disabled:opacity-40"
       >
         حفظ التوقع
       </button>
-      {!userId && (
-        <div className="text-[10px] text-[var(--muted-foreground)] text-center mt-2">
-          سجّل الدخول للتوقع
-        </div>
-      )}
       {err && <div className="text-[var(--stadium-red)] text-xs text-center mt-2">{err}</div>}
     </div>
   );

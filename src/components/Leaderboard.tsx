@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { useLeaderboard } from "@/lib/predictions";
+import { useEffect, useMemo, useState } from "react";
+import { useLeaderboard, fetchUserPredictions, type Prediction } from "@/lib/predictions";
 import { MATCHES, type Match } from "@/lib/wc2026-data";
 
 const STAGE_LABEL: Record<Match["stage"], string> = {
@@ -12,8 +12,8 @@ const STAGE_LABEL: Record<Match["stage"], string> = {
 
 export default function Leaderboard({ currentUserId }: { currentUserId: string | null }) {
   const rows = useLeaderboard();
+  const [openUser, setOpenUser] = useState<{ id: string; username: string } | null>(null);
 
-  // Only show stage columns that exist in current tournament data
   const stages = useMemo(() => {
     const set = new Set<Match["stage"]>();
     MATCHES.forEach((m) => set.add(m.stage));
@@ -21,7 +21,6 @@ export default function Leaderboard({ currentUserId }: { currentUserId: string |
     return order.filter((s) => set.has(s));
   }, []);
 
-  // Compute rank with ties (same points = same rank)
   const ranked = useMemo(() => {
     let lastPts = -1;
     let lastRank = 0;
@@ -52,19 +51,18 @@ export default function Leaderboard({ currentUserId }: { currentUserId: string |
               {stages.map((s) => (
                 <th key={s} className="text-center p-2">{STAGE_LABEL[s]}</th>
               ))}
-              <th className="text-center p-2 text-[var(--gold)] sticky left-0 bg-[var(--card)] z-10">الإجمالي</th>
+              <th className="text-center p-2 text-[var(--gold)]">الإجمالي</th>
+              <th className="text-center p-2"></th>
             </tr>
           </thead>
           <tbody>
             {ranked.map((r) => {
               const isMe = r.user_id === currentUserId;
-              const bg = isMe ? "bg-[var(--gold)]/10" : "";
+              const rowBg = isMe ? "bg-[#1d2033]" : "bg-[var(--card)]";
               return (
-                <tr key={r.user_id} className={`border-b border-[var(--border)] last:border-0 ${bg}`}>
-                  <td className={`p-2 font-mono font-bold text-[var(--gold)] sticky right-0 z-10 ${isMe ? "bg-[#1d2033]" : "bg-[var(--card)]"}`}>
-                    {r.rank}
-                  </td>
-                  <td className={`p-2 font-bold truncate max-w-[100px] sticky right-8 z-10 ${isMe ? "bg-[#1d2033]" : "bg-[var(--card)]"}`}>
+                <tr key={r.user_id} className={`border-b border-[var(--border)] last:border-0 ${isMe ? "bg-[var(--gold)]/10" : ""}`}>
+                  <td className={`p-2 font-mono font-bold text-[var(--gold)] sticky right-0 z-10 ${rowBg}`}>{r.rank}</td>
+                  <td className={`p-2 font-bold truncate max-w-[100px] sticky right-8 z-10 ${rowBg}`}>
                     {r.username}
                     {isMe && <span className="text-[9px] text-[var(--gold)] mr-1">(أنت)</span>}
                   </td>
@@ -73,8 +71,14 @@ export default function Leaderboard({ currentUserId }: { currentUserId: string |
                       {r.per_round[s] ?? 0}
                     </td>
                   ))}
-                  <td className={`p-2 text-center font-mono font-bold text-[var(--gold)] sticky left-0 z-10 ${isMe ? "bg-[#1d2033]" : "bg-[var(--card)]"}`}>
-                    {r.total_points}
+                  <td className="p-2 text-center font-mono font-bold text-[var(--gold)]">{r.total_points}</td>
+                  <td className="p-2 text-center">
+                    <button
+                      onClick={() => setOpenUser({ id: r.user_id, username: r.username })}
+                      className="text-[10px] font-bold px-2 py-1 rounded border border-[var(--gold)]/50 text-[var(--gold)] hover:bg-[var(--gold)]/10 whitespace-nowrap"
+                    >
+                      التوقعات
+                    </button>
                   </td>
                 </tr>
               );
@@ -85,6 +89,113 @@ export default function Leaderboard({ currentUserId }: { currentUserId: string |
       <p className="text-[10px] text-[var(--muted-foreground)] text-center mt-3 font-mono">
         3 نقاط للنتيجة الدقيقة • 1 نقطة للفائز الصحيح • مرّر أفقياً لرؤية جميع الأدوار
       </p>
+
+      {openUser && (
+        <PredictionsModal
+          userId={openUser.id}
+          username={openUser.username}
+          onClose={() => setOpenUser(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function PredictionsModal({ userId, username, onClose }: { userId: string; username: string; onClose: () => void }) {
+  const [preds, setPreds] = useState<Prediction[] | null>(null);
+  const matchById = useMemo(() => {
+    const m: Record<string, Match> = {};
+    MATCHES.forEach((x) => (m[x.id] = x));
+    return m;
+  }, []);
+
+  useEffect(() => {
+    let cancel = false;
+    fetchUserPredictions(userId).then((data) => {
+      if (!cancel) setPreds(data);
+    });
+    return () => { cancel = true; };
+  }, [userId]);
+
+  // Sort by kickoff (chronological)
+  const sorted = useMemo(() => {
+    if (!preds) return [];
+    return [...preds]
+      .filter((p) => matchById[p.match_id])
+      .sort((a, b) => +new Date(matchById[a.match_id].kickoffUtc) - +new Date(matchById[b.match_id].kickoffUtc));
+  }, [preds, matchById]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm grid place-items-end sm:place-items-center px-2 sm:px-4 py-4"
+      onClick={onClose}
+    >
+      <div
+        dir="rtl"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-[480px] bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl max-h-[85vh] overflow-hidden flex flex-col"
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+          <div className="min-w-0">
+            <div className="text-[10px] font-mono text-[var(--muted-foreground)] uppercase tracking-widest">توقعات اللاعب</div>
+            <div className="font-bold truncate text-[var(--gold)]">{username}</div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] text-sm px-2"
+            aria-label="إغلاق"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          {preds === null ? (
+            <div className="text-center text-xs text-[var(--muted-foreground)] py-10">…جاري التحميل</div>
+          ) : sorted.length === 0 ? (
+            <div className="text-center text-xs text-[var(--muted-foreground)] py-10">لا توجد توقعات بعد</div>
+          ) : (
+            sorted.map((p) => {
+              const m = matchById[p.match_id];
+              const pts = p.points;
+              const pillCls =
+                pts === 3
+                  ? "bg-[var(--gold)]/20 text-[var(--gold)]"
+                  : pts === 1
+                  ? "bg-[#86ac6f]/20 text-[#86ac6f]"
+                  : pts === 0
+                  ? "bg-[var(--stadium-red)]/15 text-[var(--stadium-red)]"
+                  : "bg-[var(--secondary)] text-[var(--muted-foreground)]";
+              const ptsLabel = pts == null ? "—" : `${pts} ${pts === 1 ? "نقطة" : "نقاط"}`;
+              return (
+                <div key={p.match_id} className="bg-[var(--background)] border border-[var(--border)] rounded-lg p-3">
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                    <div className="flex items-center justify-center gap-2 min-w-0">
+                      <span className="text-lg shrink-0">{m.homeFlag}</span>
+                      <span className="text-xs font-bold truncate">{m.homeNameAr}</span>
+                    </div>
+                    <div dir="ltr" className="font-mono font-bold text-lg px-2 whitespace-nowrap">
+                      {p.home_score} - {p.away_score}
+                    </div>
+                    <div className="flex items-center justify-center gap-2 min-w-0">
+                      <span className="text-xs font-bold truncate">{m.awayNameAr}</span>
+                      <span className="text-lg shrink-0">{m.awayFlag}</span>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-[10px] font-mono text-[var(--muted-foreground)] uppercase">
+                      {STAGE_LABEL[m.stage]}
+                    </span>
+                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${pillCls}`}>
+                      {ptsLabel}
+                    </span>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
     </div>
   );
 }
