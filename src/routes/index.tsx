@@ -290,20 +290,26 @@ function Index() {
     }
   }, [theme]);
 
-  // Sort all matches; keep finished visible (needed for prediction results view)
-  const allMatches = useMemo(
-    () => [...MATCHES].sort((a, b) => +new Date(a.kickoffUtc) - +new Date(b.kickoffUtc)),
-    []
-  );
+  // Sort: upcoming/live first (chronological), then finished at bottom (chronological).
+  const allMatches = useMemo(() => {
+    const byTime = [...MATCHES].sort((a, b) => +new Date(a.kickoffUtc) - +new Date(b.kickoffUtc));
+    const active: Match[] = [];
+    const done: Match[] = [];
+    byTime.forEach((m) => {
+      if (matchStatus(m.kickoffUtc, now) === "finished") done.push(m);
+      else active.push(m);
+    });
+    return [...active, ...done];
+  }, [now]);
 
-  const upcomingOnly = useMemo(
-    () => allMatches.filter((m) => matchStatus(m.kickoffUtc, now) !== "finished"),
+  const liveMatch = useMemo(
+    () => allMatches.find((m) => matchStatus(m.kickoffUtc, now) === "live") ?? null,
     [allMatches, now]
   );
 
   const nextMatch = useMemo(
-    () => upcomingOnly.find((m) => matchStatus(m.kickoffUtc, now) === "upcoming") ?? upcomingOnly[0] ?? null,
-    [upcomingOnly, now]
+    () => allMatches.find((m) => matchStatus(m.kickoffUtc, now) === "upcoming") ?? null,
+    [allMatches, now]
   );
 
   // My points
@@ -324,6 +330,7 @@ function Index() {
     }
     return allMatches;
   }, [allMatches, tab, query, now]);
+
 
   const tabs: { key: TabKey; label: string }[] = [
     { key: "today",       label: "اليوم" },
