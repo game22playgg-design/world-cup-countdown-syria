@@ -11,16 +11,13 @@ export interface UserProfile {
 // without exposing a real email. Non-ascii usernames are hashed to hex.
 function usernameToEmail(username: string): string {
   const trimmed = username.trim();
-  // If pure ascii alnum + . _ -, use it directly
   if (/^[A-Za-z0-9._-]+$/.test(trimmed)) {
     return `${trimmed.toLowerCase()}@moaid.local`;
   }
-  // Hash to hex for arabic / unicode names
   let hash = 5381;
   for (let i = 0; i < trimmed.length; i++) {
     hash = ((hash << 5) + hash + trimmed.charCodeAt(i)) >>> 0;
   }
-  // Add length + first char code for extra uniqueness
   const suffix = `${hash.toString(16)}${trimmed.length.toString(16)}`;
   return `u_${suffix}@moaid.local`;
 }
@@ -66,6 +63,21 @@ export function useCurrentUser() {
   return { profile, loading };
 }
 
+// Translate common Supabase auth errors into Arabic; otherwise show the raw message.
+function translateAuthError(msg: string): string {
+  const m = msg.toLowerCase();
+  if (m.includes("invalid login") || m.includes("invalid credentials")) return "كلمة السر غير صحيحة";
+  if (m.includes("password should be at least")) {
+    const match = msg.match(/at least (\d+)/i);
+    const n = match ? match[1] : "6";
+    return `كلمة السر يجب ألا تقل عن ${n} أحرف`;
+  }
+  if (m.includes("user already registered") || m.includes("already been registered")) return "الاسم مأخوذ، جرّب اسماً آخر";
+  if (m.includes("email rate limit")) return "محاولات كثيرة، انتظر قليلاً وحاول مجدداً";
+  if (m.includes("network")) return "خطأ في الشبكة، تحقق من الاتصال";
+  return msg; // surface the exact reason
+}
+
 export async function loginOrRegister(
   usernameRaw: string,
   password: string,
@@ -74,8 +86,8 @@ export async function loginOrRegister(
   if (username.length < 2 || username.length > 24) {
     return { error: "اسم المستخدم يجب أن يكون بين 2 و 24 حرفاً" };
   }
-  if (password.length < 4) {
-    return { error: "كلمة السر يجب ألا تقل عن 4 أحرف" };
+  if (password.length < 1) {
+    return { error: "أدخل كلمة السر" };
   }
 
   // Check if username already exists
@@ -86,27 +98,24 @@ export async function loginOrRegister(
     .maybeSingle();
 
   if (existing) {
-    // Sign in with stored email
     const email = existing.email ?? usernameToEmail(username);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: "كلمة السر غير صحيحة" };
+    if (error) return { error: translateAuthError(error.message) };
     return {};
   }
 
-  // Register: sign up new account
   const email = usernameToEmail(username);
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email,
     password,
   });
   if (signUpError || !signUpData.user) {
-    return { error: "تعذّر إنشاء الحساب، حاول لاحقاً" };
+    return { error: signUpError ? translateAuthError(signUpError.message) : "تعذّر إنشاء الحساب" };
   }
 
-  // Ensure session (in case email confirmation is off, signUp returns a session)
   if (!signUpData.session) {
     const { error: siErr } = await supabase.auth.signInWithPassword({ email, password });
-    if (siErr) return { error: "تم إنشاء الحساب — سجّل الدخول الآن" };
+    if (siErr) return { error: translateAuthError(siErr.message) };
   }
 
   const userId = signUpData.user.id;
@@ -117,7 +126,7 @@ export async function loginOrRegister(
   });
   if (insErr) {
     await supabase.auth.signOut();
-    return { error: "الاسم مأخوذ، جرّب اسماً آخر" };
+    return { error: insErr.message.toLowerCase().includes("duplicate") ? "الاسم مأخوذ، جرّب اسماً آخر" : insErr.message };
   }
   return {};
 }
