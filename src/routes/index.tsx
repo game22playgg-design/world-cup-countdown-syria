@@ -473,8 +473,10 @@ function Index() {
                       userId={profile?.id ?? null}
                       prediction={predictions[m.id]}
                       result={results[m.id]}
+                      onRequireLogin={() => setShowGate(true)}
                     />
                   ))
+
                 )}
               </main>
             </>
