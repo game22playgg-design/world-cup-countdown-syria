@@ -411,8 +411,13 @@ function Index() {
             </div>
           )}
 
-          {/* Hero countdown */}
-          <Countdown target={nextMatch} />
+          {/* Hero: live match takes precedence over countdown */}
+          {liveMatch ? (
+            <LiveHero match={liveMatch} result={results[liveMatch.id]} />
+          ) : (
+            <Countdown target={nextMatch} />
+          )}
+
 
           {/* Tabs */}
           <nav className="px-3 sticky top-0 z-10 bg-[var(--background)]/95 backdrop-blur border-b border-[var(--border)]">
