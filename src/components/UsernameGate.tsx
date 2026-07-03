@@ -47,11 +47,12 @@ export default function UsernameGate({ onDone }: { onDone: () => void }) {
         {err && <div className="text-[var(--stadium-red)] text-xs mt-3 text-center">{err}</div>}
         <button
           type="submit"
-          disabled={busy || name.trim().length < 2 || pw.length < 4}
+          disabled={busy || name.trim().length < 2 || pw.length < 1}
           className="w-full mt-4 bg-[var(--gold)] text-[var(--primary-foreground)] font-bold py-3 rounded-lg disabled:opacity-40"
         >
           {busy ? "..." : "دخول"}
         </button>
+
       </form>
     </div>
   );
