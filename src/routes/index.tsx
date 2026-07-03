@@ -127,8 +127,35 @@ function Countdown({ target }: { target: Match | null }) {
         <div className="mt-5 font-mono text-xs text-[var(--muted-foreground)]">
           {date} • {time}
         </div>
-        <div className="mt-1 text-xs text-[var(--muted-foreground)]">
-          {target.stadiumAr} — {target.cityAr}
+      </div>
+    </div>
+  );
+}
+
+function LiveHero({ match, result }: { match: Match; result: { home_score: number; away_score: number } | undefined }) {
+  return (
+    <div className="relative px-4 pt-6 pb-8">
+      <div className="absolute inset-0 bg-gradient-to-b from-[var(--stadium-red)]/15 via-transparent to-transparent pointer-events-none" />
+      <div className="relative text-center">
+        <div className="inline-flex items-center gap-2 mb-4">
+          <span className="w-2 h-2 rounded-full bg-[var(--stadium-red)] animate-pulse" />
+          <span className="text-xs tracking-[0.3em] text-[var(--stadium-red)] font-mono">مباراة جارية الآن</span>
+        </div>
+        <div className="flex items-center justify-center gap-4">
+          <div className="flex flex-col items-center gap-2 min-w-0 flex-1">
+            <span className="text-5xl">{match.homeFlag}</span>
+            <span className="text-sm font-bold truncate w-full">{match.homeNameAr}</span>
+          </div>
+          <div dir="ltr" className="font-mono font-bold text-5xl text-[var(--gold)] whitespace-nowrap">
+            {result ? `${result.home_score} - ${result.away_score}` : "— : —"}
+          </div>
+          <div className="flex flex-col items-center gap-2 min-w-0 flex-1">
+            <span className="text-5xl">{match.awayFlag}</span>
+            <span className="text-sm font-bold truncate w-full">{match.awayNameAr}</span>
+          </div>
+        </div>
+        <div className="mt-4 text-[10px] font-mono text-[var(--muted-foreground)] uppercase tracking-widest">
+          {STAGE_LABEL[match.stage]}
         </div>
       </div>
     </div>
@@ -153,15 +180,44 @@ const STAGE_LABEL: Record<Match["stage"], string> = {
   final: "النهائي",
 };
 
+/** Two-team score row aligned under each flag/name. Used for Final Result & Your Prediction. */
+function ScoreRow({
+  label, home, away, tone,
+}: {
+  label: string;
+  home: number;
+  away: number;
+  tone: "gold" | "muted";
+}) {
+  const color = tone === "gold" ? "text-[var(--gold)]" : "text-[var(--foreground)]";
+  const bg = tone === "gold" ? "bg-[var(--gold)]/8 border-[var(--gold)]/30" : "bg-[var(--background)] border-[var(--border)]";
+  return (
+    <div className={`mt-3 rounded-lg border ${bg} px-3 py-2`}>
+      <div className="text-[9px] font-mono uppercase tracking-widest text-[var(--muted-foreground)] text-center mb-1">
+        {label}
+      </div>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+        <div className={`text-center font-mono font-bold text-2xl ${color}`}>{home}</div>
+        <div className="text-[var(--muted-foreground)] font-bold">-</div>
+        <div className={`text-center font-mono font-bold text-2xl ${color}`}>{away}</div>
+      </div>
+    </div>
+  );
+}
+
 function MatchCard({
-  match, now, userId, prediction, result,
+  match, now, userId, prediction, result, onRequireLogin,
 }: {
   match: Match; now: Date; userId: string | null;
   prediction: ReturnType<typeof useMyPredictions>["predictions"][string] | undefined;
   result: ReturnType<typeof useMatchResults>[string] | undefined;
+  onRequireLogin: () => void;
 }) {
   const { date, time } = fmtSyria(match.kickoffUtc);
   const status = matchStatus(match.kickoffUtc, now);
+  const pts = prediction?.points;
+  const ptsColor =
+    pts === 3 ? "text-[var(--gold)]" : pts === 1 ? "text-[#86ac6f]" : pts === 0 ? "text-[var(--stadium-red)]" : "text-[var(--muted-foreground)]";
 
   return (
     <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 shadow-sm">
@@ -185,14 +241,35 @@ function MatchCard({
         </div>
       </div>
 
-      <div className="mt-3 pt-3 border-t border-[var(--border)] text-[11px] text-[var(--muted-foreground)] text-center font-mono">
-        {match.stadiumAr} • {match.cityAr}
-      </div>
+      {/* Final result block — replaces stadium line */}
+      {result && (
+        <ScoreRow label="النتيجة النهائية" home={result.home_score} away={result.away_score} tone="gold" />
+      )}
 
-      <PredictionBox match={match} userId={userId} prediction={prediction} result={result} now={now} />
+      {/* Your prediction (only when it exists — otherwise PredictionBox handles input/CTA) */}
+      {prediction && (
+        <>
+          <ScoreRow label="توقعك" home={prediction.home_score} away={prediction.away_score} tone="muted" />
+          {result && pts != null && (
+            <div className={`text-center mt-2 font-[var(--font-display)] text-base tracking-wider ${ptsColor}`}>
+              {pts} {pts === 1 ? "نقطة" : "نقاط"}
+            </div>
+          )}
+        </>
+      )}
+
+      <PredictionBox
+        match={match}
+        userId={userId}
+        prediction={prediction}
+        result={result}
+        now={now}
+        onRequireLogin={onRequireLogin}
+      />
     </div>
   );
 }
+
 
 function Index() {
   const [tab, setTab] = useState<TabKey>("round");
