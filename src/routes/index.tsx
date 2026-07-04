@@ -21,7 +21,7 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type TabKey = "today" | "round" | "leaderboard" | "search";
+type TabKey = "today" | "round" | "r32" | "leaderboard" | "search";
 
 const SYRIA_TZ = "Asia/Damascus";
 
@@ -321,6 +321,8 @@ function Index() {
 
   const visible = useMemo(() => {
     if (tab === "today") return allMatches.filter((m) => isSameSyriaDay(m.kickoffUtc, now));
+    if (tab === "round") return allMatches.filter((m) => m.stage === "r16");
+    if (tab === "r32") return allMatches.filter((m) => m.stage === "r32");
     if (tab === "search") {
       const q = query.trim().toLowerCase();
       if (!q) return [];
@@ -335,6 +337,7 @@ function Index() {
   const tabs: { key: TabKey; label: string }[] = [
     { key: "today",       label: "اليوم" },
     { key: "round",       label: CURRENT_ROUND_AR },
+    { key: "r32",         label: "دور الـ32 (منتهي)" },
     { key: "leaderboard", label: "المتصدرون" },
     { key: "search",      label: "بحث" },
   ];
@@ -456,6 +459,13 @@ function Index() {
                 </div>
               )}
               <main key={tab} className="px-3 py-4 flex flex-col gap-3 tab-enter flex-1">
+                {tab === "r32" && (
+                  <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-center">
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--muted-foreground)]">
+                      هذا الدور <span className="text-[var(--gold)]">منتهي</span> — للاطلاع فقط
+                    </span>
+                  </div>
+                )}
                 {visible.length === 0 ? (
                   <div className="text-center text-[var(--muted-foreground)] py-12 text-sm">
                     {tab === "today"
