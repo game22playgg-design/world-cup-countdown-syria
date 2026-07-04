@@ -321,6 +321,8 @@ function Index() {
 
   const visible = useMemo(() => {
     if (tab === "today") return allMatches.filter((m) => isSameSyriaDay(m.kickoffUtc, now));
+    if (tab === "round") return allMatches.filter((m) => m.stage === "r16");
+    if (tab === "r32") return allMatches.filter((m) => m.stage === "r32");
     if (tab === "search") {
       const q = query.trim().toLowerCase();
       if (!q) return [];
@@ -335,6 +337,7 @@ function Index() {
   const tabs: { key: TabKey; label: string }[] = [
     { key: "today",       label: "اليوم" },
     { key: "round",       label: CURRENT_ROUND_AR },
+    { key: "r32",         label: "دور الـ32 (منتهي)" },
     { key: "leaderboard", label: "المتصدرون" },
     { key: "search",      label: "بحث" },
   ];
