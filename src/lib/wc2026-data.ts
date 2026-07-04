@@ -101,7 +101,41 @@ export const MATCHES: Match[] = [
     homeName: "Colombia", homeFlag: F("C","O"), homeNameAr: "كولومبيا",
     awayName: "Ghana",    awayFlag: F("G","H"), awayNameAr: "غانا",
     stage: "r32", city: "Kansas City", cityAr: "كانساس سيتي", stadium: "Arrowhead Stadium", stadiumAr: "ملعب آروهيد" },
+
+  // ============ Round of 16 (July 5 – 8, 2026) ============
+  { id: "r16-1", kickoffUtc: "2026-07-05T17:00:00Z",
+    homeName: "Canada", homeFlag: F("C","A"), homeNameAr: "كندا",
+    awayName: "Brazil", awayFlag: F("B","R"), awayNameAr: "البرازيل",
+    stage: "r16", city: "Dallas", cityAr: "دالاس", stadium: "AT&T Stadium", stadiumAr: "ملعب AT&T" },
+  { id: "r16-2", kickoffUtc: "2026-07-05T21:00:00Z",
+    homeName: "Germany",     homeFlag: F("D","E"), homeNameAr: "ألمانيا",
+    awayName: "Netherlands", awayFlag: F("N","L"), awayNameAr: "هولندا",
+    stage: "r16", city: "Philadelphia", cityAr: "فيلادلفيا", stadium: "Lincoln Financial Field", stadiumAr: "ملعب لينكولن فاينانشال" },
+  { id: "r16-3", kickoffUtc: "2026-07-06T17:00:00Z",
+    homeName: "Norway", homeFlag: F("N","O"), homeNameAr: "النرويج",
+    awayName: "France", awayFlag: F("F","R"), awayNameAr: "فرنسا",
+    stage: "r16", city: "Boston", cityAr: "بوسطن", stadium: "Gillette Stadium", stadiumAr: "ملعب جيليت" },
+  { id: "r16-4", kickoffUtc: "2026-07-06T21:00:00Z",
+    homeName: "Mexico",  homeFlag: F("M","X"), homeNameAr: "المكسيك",
+    awayName: "England", awayFlag: F("G","B"), awayNameAr: "إنكلترا",
+    stage: "r16", city: "Guadalajara", cityAr: "غوادالاخارا", stadium: "Estadio Akron", stadiumAr: "ملعب أكرون" },
+  { id: "r16-5", kickoffUtc: "2026-07-07T17:00:00Z",
+    homeName: "Belgium",       homeFlag: F("B","E"), homeNameAr: "بلجيكا",
+    awayName: "United States", awayFlag: F("U","S"), awayNameAr: "الولايات المتحدة",
+    stage: "r16", city: "New York", cityAr: "نيويورك", stadium: "MetLife Stadium", stadiumAr: "ملعب ميتلايف" },
+  { id: "r16-6", kickoffUtc: "2026-07-07T21:00:00Z",
+    homeName: "Spain",    homeFlag: F("E","S"), homeNameAr: "إسبانيا",
+    awayName: "Portugal", awayFlag: F("P","T"), awayNameAr: "البرتغال",
+    stage: "r16", city: "Los Angeles", cityAr: "لوس أنجلوس", stadium: "SoFi Stadium", stadiumAr: "ملعب سوفاي" },
+  { id: "r16-7", kickoffUtc: "2026-07-08T18:00:00Z",
+    homeName: "Switzerland", homeFlag: F("C","H"), homeNameAr: "سويسرا",
+    awayName: "Australia",   awayFlag: F("A","U"), awayNameAr: "أستراليا",
+    stage: "r16", city: "Houston", cityAr: "هيوستن", stadium: "NRG Stadium", stadiumAr: "ملعب NRG" },
+  { id: "r16-8", kickoffUtc: "2026-07-08T22:00:00Z",
+    homeName: "Argentina", homeFlag: F("A","R"), homeNameAr: "الأرجنتين",
+    awayName: "Colombia",  awayFlag: F("C","O"), awayNameAr: "كولومبيا",
+    stage: "r16", city: "Miami", cityAr: "ميامي", stadium: "Hard Rock Stadium", stadiumAr: "ملعب هارد روك" },
 ];
 
-export const CURRENT_ROUND_AR = "دور الـ32";
-export const CURRENT_ROUND_DATES_AR = "28 حزيران – 3 تموز 2026";
+export const CURRENT_ROUND_AR = "دور الـ16";
+export const CURRENT_ROUND_DATES_AR = "5 – 8 تموز 2026";
