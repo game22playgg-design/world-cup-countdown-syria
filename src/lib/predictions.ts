@@ -44,9 +44,10 @@ export function useMatchResults() {
     };
     load();
     const ch = supabase
-      .channel("match_results_ch")
+      .channel(`match_results_ch_${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "match_results" }, load)
       .subscribe();
+
     return () => {
       supabase.removeChannel(ch);
     };
