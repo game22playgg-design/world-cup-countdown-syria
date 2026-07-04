@@ -74,7 +74,8 @@ export function useMyPredictions(userId: string | null) {
     load();
     if (!userId) return;
     const ch = supabase
-      .channel(`predictions_ch_${userId}`)
+      .channel(`predictions_ch_${userId}_${Math.random().toString(36).slice(2)}`)
+
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "predictions", filter: `user_id=eq.${userId}` },
