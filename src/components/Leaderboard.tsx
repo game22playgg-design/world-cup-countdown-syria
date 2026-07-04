@@ -175,7 +175,7 @@ function PredictionsModal({ userId, username, onClose }: { userId: string; usern
                       <span className="text-xs font-bold truncate">{m.homeNameAr}</span>
                     </div>
                     <div dir="ltr" className="font-mono font-bold text-lg px-2 whitespace-nowrap">
-                      {p.home_score} - {p.away_score}
+                      {p.away_score} - {p.home_score}
                     </div>
                     <div className="flex items-center justify-center gap-2 min-w-0">
                       <span className="text-xs font-bold truncate">{m.awayNameAr}</span>
