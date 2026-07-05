@@ -326,12 +326,12 @@ function Index() {
     [allMatches, now]
   );
 
-  // My points
+  // My points — sum of earned prediction points + admin-set bonus
   const myTotal = useMemo(() => {
-    let t = 0;
+    let t = profile?.bonus_points ?? 0;
     Object.values(predictions).forEach((p) => { if (p.points != null) t += p.points; });
     return t;
-  }, [predictions]);
+  }, [predictions, profile?.bonus_points]);
 
   const visible = useMemo(() => {
     if (tab === "today") return allMatches.filter((m) => isSameSyriaDay(m.kickoffUtc, now));
