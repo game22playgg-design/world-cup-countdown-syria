@@ -22,6 +22,7 @@ export interface MatchResult {
   match_id: string;
   home_score: number;
   away_score: number;
+  highlights_url?: string | null;
 }
 export interface LeaderboardRow {
   user_id: string;
@@ -37,9 +38,9 @@ export function useMatchResults() {
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase.from("match_results").select("match_id, home_score, away_score");
+      const { data } = await supabase.from("match_results").select("match_id, home_score, away_score, highlights_url");
       const map: Record<string, MatchResult> = {};
-      (data ?? []).forEach((r) => (map[r.match_id] = r));
+      (data ?? []).forEach((r) => (map[r.match_id] = r as MatchResult));
       setResults(map);
     };
     load();
@@ -113,6 +114,14 @@ export async function upsertMatchResult(matchId: string, home: number, away: num
     away_score: away,
     updated_at: new Date().toISOString(),
   });
+  return { error: error?.message };
+}
+
+export async function setHighlightsUrl(matchId: string, url: string | null) {
+  const { error } = await supabase
+    .from("match_results")
+    .update({ highlights_url: url && url.trim() ? url.trim() : null })
+    .eq("match_id", matchId);
   return { error: error?.message };
 }
 
