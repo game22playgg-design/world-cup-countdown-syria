@@ -398,6 +398,34 @@ function Index() {
       <SplashScreen />
       {showGate && <UsernameGate onDone={() => setShowGate(false)} />}
       {showAdmin && profile?.is_admin && <AdminPanel onClose={() => setShowAdmin(false)} />}
+      {showPushPrompt && profile && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[min(92vw,420px)] bg-[var(--card)] border border-[var(--gold)]/40 rounded-2xl shadow-2xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="text-2xl">🔔</div>
+            <div className="flex-1 min-w-0">
+              <div className="font-bold text-sm text-[var(--gold)] mb-1">فعّل الإشعارات</div>
+              <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                ذكّرك قبل كل مباراة بساعة وأخبرك بنقاطك فور احتساب النتيجة.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={enablePush}
+                  disabled={pushBusy}
+                  className="bg-[var(--gold)] text-[var(--primary-foreground)] px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50"
+                >
+                  {pushBusy ? "..." : "تفعيل"}
+                </button>
+                <button
+                  onClick={() => dismissPushPrompt(true)}
+                  className="border border-[var(--border)] text-[var(--muted-foreground)] px-3 py-1.5 rounded-lg text-xs"
+                >
+                  لاحقاً
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
         <div className="mx-auto max-w-[480px] min-h-screen flex flex-col">
           {/* Top bar */}
