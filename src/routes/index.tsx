@@ -8,6 +8,7 @@ import Leaderboard from "@/components/Leaderboard";
 import AdminPanel from "@/components/AdminPanel";
 import { useCurrentUser, signOut } from "@/lib/auth-user";
 import { useMatchResults, useMyPredictions } from "@/lib/predictions";
+import { enablePushNotifications, pushPermissionState, pushSupported } from "@/lib/push";
 
 export const Route = createFileRoute("/")({
   head: () => ({
