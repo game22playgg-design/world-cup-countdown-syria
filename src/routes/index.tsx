@@ -292,10 +292,47 @@ function Index() {
   const [showGate, setShowGate] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showPushPrompt, setShowPushPrompt] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
   const now = useNow(1000);
   const { profile, loading } = useCurrentUser();
   const results = useMatchResults();
   const { predictions } = useMyPredictions(profile?.id ?? null);
+
+  // After login, offer to enable browser push notifications (only once per browser).
+  useEffect(() => {
+    if (!profile) return;
+    if (!pushSupported()) return;
+    const state = pushPermissionState();
+    if (state !== "default") return;
+    let dismissed = false;
+    try {
+      dismissed = localStorage.getItem("moaid_push_dismissed") === "1";
+    } catch {}
+    if (dismissed) return;
+    const t = setTimeout(() => setShowPushPrompt(true), 1500);
+    return () => clearTimeout(t);
+  }, [profile]);
+
+  const dismissPushPrompt = (persist: boolean) => {
+    setShowPushPrompt(false);
+    if (persist) {
+      try { localStorage.setItem("moaid_push_dismissed", "1"); } catch {}
+    }
+  };
+
+  const enablePush = async () => {
+    if (!profile) return;
+    setPushBusy(true);
+    const res = await enablePushNotifications(profile.id);
+    setPushBusy(false);
+    dismissPushPrompt(true);
+    if (!res.ok && res.error) {
+      // silent fail — user will just not receive notifications
+      console.warn("push enable failed:", res.error);
+    }
+  };
+
 
   useEffect(() => {
     if (typeof document !== "undefined") {
