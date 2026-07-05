@@ -244,7 +244,20 @@ function MatchCard({
 
       {/* Final result block — replaces stadium line */}
       {result && (
-        <ScoreRow label="النتيجة النهائية" home={result.home_score} away={result.away_score} tone="gold" />
+        <>
+          <ScoreRow label="النتيجة النهائية" home={result.home_score} away={result.away_score} tone="gold" />
+          {result.highlights_url && (
+            <a
+              href={result.highlights_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 flex items-center justify-center gap-2 text-xs font-bold text-[var(--gold)] border border-[var(--gold)]/40 hover:bg-[var(--gold)]/10 rounded-lg py-2 transition-colors"
+            >
+              <span>▶</span>
+              <span>مشاهدة ملخص المباراة</span>
+            </a>
+          )}
+        </>
       )}
 
       {/* Your prediction (only when it exists — otherwise PredictionBox handles input/CTA) */}
