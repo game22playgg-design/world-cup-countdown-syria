@@ -6,6 +6,7 @@ import {
   useMatchResults,
   useLeaderboard,
   setUserBonusPoints,
+  setHighlightsUrl,
 } from "@/lib/predictions";
 
 export default function AdminPanel({ onClose }: { onClose: () => void }) {
@@ -64,12 +65,14 @@ function ResultRow({
   matchId, homeName, awayName, existing,
 }: {
   matchId: string; homeName: string; awayName: string;
-  existing: { home_score: number; away_score: number } | undefined;
+  existing: { home_score: number; away_score: number; highlights_url?: string | null } | undefined;
 }) {
   const [h, setH] = useState<string>(existing ? String(existing.home_score) : "");
   const [a, setA] = useState<string>(existing ? String(existing.away_score) : "");
+  const [url, setUrl] = useState<string>(existing?.highlights_url ?? "");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [urlMsg, setUrlMsg] = useState<string | null>(null);
 
   const save = async () => {
     const hn = parseInt(h, 10), an = parseInt(a, 10);
@@ -83,8 +86,16 @@ function ResultRow({
   const clear = async () => {
     setBusy(true);
     await deleteMatchResult(matchId);
-    setH(""); setA("");
+    setH(""); setA(""); setUrl("");
     setBusy(false);
+  };
+
+  const saveUrl = async () => {
+    setBusy(true);
+    const { error } = await setHighlightsUrl(matchId, url);
+    setBusy(false);
+    setUrlMsg(error ? "خطأ" : "✓");
+    setTimeout(() => setUrlMsg(null), 1500);
   };
 
   return (
@@ -101,6 +112,37 @@ function ResultRow({
         <button onClick={save} disabled={busy} className="bg-[var(--gold)] text-[var(--primary-foreground)] px-3 py-1.5 rounded text-xs font-bold">حفظ</button>
         {existing && <button onClick={clear} disabled={busy} className="text-[var(--stadium-red)] text-xs">حذف</button>}
         {msg && <span className="text-[var(--gold)] text-xs">{msg}</span>}
+      </div>
+
+      {/* Highlights URL — enabled only after a result exists (i.e. match marked finished) */}
+      <div className={`mt-3 pt-3 border-t border-[var(--border)] ${existing ? "" : "opacity-50"}`}>
+        <div className="text-[10px] font-mono uppercase text-[var(--muted-foreground)] mb-1 text-center">
+          رابط ملخص المباراة
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="url"
+            dir="ltr"
+            placeholder="https://youtube.com/…"
+            value={url}
+            disabled={!existing || busy}
+            onChange={(e) => setUrl(e.target.value)}
+            className="flex-1 h-9 px-2 text-xs bg-[var(--background)] border border-[var(--border)] rounded font-mono"
+          />
+          <button
+            onClick={saveUrl}
+            disabled={!existing || busy}
+            className="bg-[var(--gold)]/80 text-[var(--primary-foreground)] px-3 py-1.5 rounded text-xs font-bold whitespace-nowrap disabled:opacity-40"
+          >
+            حفظ الرابط
+          </button>
+          {urlMsg && <span className="text-[var(--gold)] text-xs">{urlMsg}</span>}
+        </div>
+        {!existing && (
+          <div className="text-[10px] text-[var(--muted-foreground)] text-center mt-1">
+            سجّل النتيجة أولاً لتفعيل الرابط
+          </div>
+        )}
       </div>
     </div>
   );

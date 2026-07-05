@@ -8,6 +8,7 @@ import Leaderboard from "@/components/Leaderboard";
 import AdminPanel from "@/components/AdminPanel";
 import { useCurrentUser, signOut } from "@/lib/auth-user";
 import { useMatchResults, useMyPredictions } from "@/lib/predictions";
+import { enablePushNotifications, pushPermissionState, pushSupported } from "@/lib/push";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -243,7 +244,20 @@ function MatchCard({
 
       {/* Final result block — replaces stadium line */}
       {result && (
-        <ScoreRow label="النتيجة النهائية" home={result.home_score} away={result.away_score} tone="gold" />
+        <>
+          <ScoreRow label="النتيجة النهائية" home={result.home_score} away={result.away_score} tone="gold" />
+          {result.highlights_url && (
+            <a
+              href={result.highlights_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 flex items-center justify-center gap-2 text-xs font-bold text-[var(--gold)] border border-[var(--gold)]/40 hover:bg-[var(--gold)]/10 rounded-lg py-2 transition-colors"
+            >
+              <span>▶</span>
+              <span>مشاهدة ملخص المباراة</span>
+            </a>
+          )}
+        </>
       )}
 
       {/* Your prediction (only when it exists — otherwise PredictionBox handles input/CTA) */}
@@ -278,10 +292,47 @@ function Index() {
   const [showGate, setShowGate] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showPushPrompt, setShowPushPrompt] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
   const now = useNow(1000);
   const { profile, loading } = useCurrentUser();
   const results = useMatchResults();
   const { predictions } = useMyPredictions(profile?.id ?? null);
+
+  // After login, offer to enable browser push notifications (only once per browser).
+  useEffect(() => {
+    if (!profile) return;
+    if (!pushSupported()) return;
+    const state = pushPermissionState();
+    if (state !== "default") return;
+    let dismissed = false;
+    try {
+      dismissed = localStorage.getItem("moaid_push_dismissed") === "1";
+    } catch {}
+    if (dismissed) return;
+    const t = setTimeout(() => setShowPushPrompt(true), 1500);
+    return () => clearTimeout(t);
+  }, [profile]);
+
+  const dismissPushPrompt = (persist: boolean) => {
+    setShowPushPrompt(false);
+    if (persist) {
+      try { localStorage.setItem("moaid_push_dismissed", "1"); } catch {}
+    }
+  };
+
+  const enablePush = async () => {
+    if (!profile) return;
+    setPushBusy(true);
+    const res = await enablePushNotifications(profile.id);
+    setPushBusy(false);
+    dismissPushPrompt(true);
+    if (!res.ok && res.error) {
+      // silent fail — user will just not receive notifications
+      console.warn("push enable failed:", res.error);
+    }
+  };
+
 
   useEffect(() => {
     if (typeof document !== "undefined") {
@@ -312,12 +363,12 @@ function Index() {
     [allMatches, now]
   );
 
-  // My points
+  // My points — sum of earned prediction points + admin-set bonus
   const myTotal = useMemo(() => {
-    let t = 0;
+    let t = profile?.bonus_points ?? 0;
     Object.values(predictions).forEach((p) => { if (p.points != null) t += p.points; });
     return t;
-  }, [predictions]);
+  }, [predictions, profile?.bonus_points]);
 
   const visible = useMemo(() => {
     if (tab === "today") return allMatches.filter((m) => isSameSyriaDay(m.kickoffUtc, now));
@@ -347,6 +398,34 @@ function Index() {
       <SplashScreen />
       {showGate && <UsernameGate onDone={() => setShowGate(false)} />}
       {showAdmin && profile?.is_admin && <AdminPanel onClose={() => setShowAdmin(false)} />}
+      {showPushPrompt && profile && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[min(92vw,420px)] bg-[var(--card)] border border-[var(--gold)]/40 rounded-2xl shadow-2xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="text-2xl">🔔</div>
+            <div className="flex-1 min-w-0">
+              <div className="font-bold text-sm text-[var(--gold)] mb-1">فعّل الإشعارات</div>
+              <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                ذكّرك قبل كل مباراة بساعة وأخبرك بنقاطك فور احتساب النتيجة.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={enablePush}
+                  disabled={pushBusy}
+                  className="bg-[var(--gold)] text-[var(--primary-foreground)] px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50"
+                >
+                  {pushBusy ? "..." : "تفعيل"}
+                </button>
+                <button
+                  onClick={() => dismissPushPrompt(true)}
+                  className="border border-[var(--border)] text-[var(--muted-foreground)] px-3 py-1.5 rounded-lg text-xs"
+                >
+                  لاحقاً
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
         <div className="mx-auto max-w-[480px] min-h-screen flex flex-col">
           {/* Top bar */}

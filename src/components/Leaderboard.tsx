@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLeaderboard, fetchUserPredictions, type Prediction } from "@/lib/predictions";
 import { MATCHES, type Match } from "@/lib/wc2026-data";
+import { supabase } from "@/integrations/supabase/client";
 
 const STAGE_LABEL: Record<Match["stage"], string> = {
   r32: "دور 32",
@@ -9,6 +10,12 @@ const STAGE_LABEL: Record<Match["stage"], string> = {
   sf: "نصف",
   final: "نهائي",
 };
+
+// Same match-status logic used elsewhere: finished ~110 minutes after kickoff.
+function matchFinished(iso: string, now: Date) {
+  const k = new Date(iso).getTime();
+  return now.getTime() >= k + 110 * 60 * 1000;
+}
 
 export default function Leaderboard({ currentUserId }: { currentUserId: string | null }) {
   const rows = useLeaderboard();
@@ -62,7 +69,7 @@ export default function Leaderboard({ currentUserId }: { currentUserId: string |
               return (
                 <tr key={r.user_id} className={`border-b border-[var(--border)] last:border-0 ${isMe ? "bg-[var(--gold)]/10" : ""}`}>
                   <td className={`p-2 font-mono font-bold text-[var(--gold)] sticky right-0 z-10 ${rowBg}`}>{r.rank}</td>
-                  <td className={`p-2 font-bold truncate max-w-[100px] sticky right-8 z-10 ${rowBg}`}>
+                  <td className={`p-2 font-bold sticky right-8 z-10 ${rowBg} whitespace-nowrap`}>
                     {r.username}
                     {isMe && <span className="text-[9px] text-[var(--gold)] mr-1">(أنت)</span>}
                   </td>
@@ -94,6 +101,7 @@ export default function Leaderboard({ currentUserId }: { currentUserId: string |
         <PredictionsModal
           userId={openUser.id}
           username={openUser.username}
+          currentUserId={currentUserId}
           onClose={() => setOpenUser(null)}
         />
       )}
@@ -101,12 +109,30 @@ export default function Leaderboard({ currentUserId }: { currentUserId: string |
   );
 }
 
-function PredictionsModal({ userId, username, onClose }: { userId: string; username: string; onClose: () => void }) {
+function PredictionsModal({
+  userId,
+  username,
+  currentUserId,
+  onClose,
+}: {
+  userId: string;
+  username: string;
+  currentUserId: string | null;
+  onClose: () => void;
+}) {
   const [preds, setPreds] = useState<Prediction[] | null>(null);
+  const [myPredMatchIds, setMyPredMatchIds] = useState<Set<string>>(new Set());
+  const [now, setNow] = useState(() => new Date());
+
   const matchById = useMemo(() => {
     const m: Record<string, Match> = {};
     MATCHES.forEach((x) => (m[x.id] = x));
     return m;
+  }, []);
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(t);
   }, []);
 
   useEffect(() => {
@@ -117,6 +143,25 @@ function PredictionsModal({ userId, username, onClose }: { userId: string; usern
     return () => { cancel = true; };
   }, [userId]);
 
+  // Pull the viewing user's own predictions so we can enforce the reciprocity rule
+  // for matches that haven't finished yet.
+  useEffect(() => {
+    let cancel = false;
+    if (!currentUserId || currentUserId === userId) {
+      setMyPredMatchIds(new Set());
+      return;
+    }
+    supabase
+      .from("predictions")
+      .select("match_id")
+      .eq("user_id", currentUserId)
+      .then(({ data }) => {
+        if (cancel) return;
+        setMyPredMatchIds(new Set((data ?? []).map((r) => r.match_id as string)));
+      });
+    return () => { cancel = true; };
+  }, [currentUserId, userId]);
+
   // Sort by kickoff (chronological)
   const sorted = useMemo(() => {
     if (!preds) return [];
@@ -124,6 +169,8 @@ function PredictionsModal({ userId, username, onClose }: { userId: string; usern
       .filter((p) => matchById[p.match_id])
       .sort((a, b) => +new Date(matchById[a.match_id].kickoffUtc) - +new Date(matchById[b.match_id].kickoffUtc));
   }, [preds, matchById]);
+
+  const isSelfView = currentUserId === userId;
 
   return (
     <div
@@ -157,6 +204,9 @@ function PredictionsModal({ userId, username, onClose }: { userId: string; usern
           ) : (
             sorted.map((p) => {
               const m = matchById[p.match_id];
+              const finished = matchFinished(m.kickoffUtc, now);
+              const canSeeScore = isSelfView || finished || myPredMatchIds.has(p.match_id);
+
               const pts = p.points;
               const pillCls =
                 pts === 3
@@ -167,6 +217,7 @@ function PredictionsModal({ userId, username, onClose }: { userId: string; usern
                   ? "bg-[var(--stadium-red)]/15 text-[var(--stadium-red)]"
                   : "bg-[var(--secondary)] text-[var(--muted-foreground)]";
               const ptsLabel = pts == null ? "—" : `${pts} ${pts === 1 ? "نقطة" : "نقاط"}`;
+
               return (
                 <div key={p.match_id} className="bg-[var(--background)] border border-[var(--border)] rounded-lg p-3">
                   <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
@@ -174,21 +225,36 @@ function PredictionsModal({ userId, username, onClose }: { userId: string; usern
                       <span className="text-lg shrink-0">{m.homeFlag}</span>
                       <span className="text-xs font-bold truncate">{m.homeNameAr}</span>
                     </div>
-                    <div dir="ltr" className="font-mono font-bold text-lg px-2 whitespace-nowrap">
-                      {p.away_score} - {p.home_score}
-                    </div>
+                    {canSeeScore ? (
+                      <div dir="ltr" className="font-mono font-bold text-lg px-2 whitespace-nowrap">
+                        {p.home_score} - {p.away_score}
+                      </div>
+                    ) : (
+                      <div className="font-mono font-bold text-lg px-2 whitespace-nowrap text-[var(--muted-foreground)]">
+                        ? - ?
+                      </div>
+                    )}
                     <div className="flex items-center justify-center gap-2 min-w-0">
                       <span className="text-xs font-bold truncate">{m.awayNameAr}</span>
                       <span className="text-lg shrink-0">{m.awayFlag}</span>
                     </div>
                   </div>
+
+                  {!canSeeScore && (
+                    <div className="mt-2 text-[11px] text-center text-[var(--muted-foreground)] leading-relaxed">
+                      يمكنك رؤية التوقع بعد توقعك للمباراة
+                    </div>
+                  )}
+
                   <div className="mt-2 flex items-center justify-between">
                     <span className="text-[10px] font-mono text-[var(--muted-foreground)] uppercase">
                       {STAGE_LABEL[m.stage]}
                     </span>
-                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${pillCls}`}>
-                      {ptsLabel}
-                    </span>
+                    {canSeeScore && (
+                      <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${pillCls}`}>
+                        {ptsLabel}
+                      </span>
+                    )}
                   </div>
                 </div>
               );

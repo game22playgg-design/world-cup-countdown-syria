@@ -5,16 +5,30 @@ export default function UsernameGate({ onDone }: { onDone: () => void }) {
   const [name, setName] = useState("");
   const [pw, setPw] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [suggestion, setSuggestion] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr(null);
+    setSuggestion(null);
     setBusy(true);
     const res = await loginOrRegister(name, pw);
     setBusy(false);
-    if (res.error) setErr(res.error);
-    else onDone();
+    if (res.error) {
+      setErr(res.error);
+      if (res.suggestion) setSuggestion(res.suggestion);
+    } else {
+      onDone();
+    }
+  };
+
+  const useSuggestion = () => {
+    if (suggestion) {
+      setName(suggestion);
+      setSuggestion(null);
+      setErr(null);
+    }
   };
 
   return (
@@ -45,6 +59,15 @@ export default function UsernameGate({ onDone }: { onDone: () => void }) {
           className="w-full mt-3 bg-[var(--background)] border border-[var(--border)] rounded-lg px-4 py-3 text-center text-lg focus:outline-none focus:border-[var(--gold)]"
         />
         {err && <div className="text-[var(--stadium-red)] text-xs mt-3 text-center">{err}</div>}
+        {suggestion && (
+          <button
+            type="button"
+            onClick={useSuggestion}
+            className="w-full mt-3 border border-[var(--gold)]/60 text-[var(--gold)] rounded-lg py-2 text-sm font-bold hover:bg-[var(--gold)]/10"
+          >
+            جرّب: <span className="font-mono">{suggestion}</span>
+          </button>
+        )}
         <button
           type="submit"
           disabled={busy || name.trim().length < 2 || pw.length < 1}
@@ -52,7 +75,6 @@ export default function UsernameGate({ onDone }: { onDone: () => void }) {
         >
           {busy ? "..." : "دخول"}
         </button>
-
       </form>
     </div>
   );

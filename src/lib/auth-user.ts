@@ -5,6 +5,7 @@ export interface UserProfile {
   id: string;
   username: string;
   is_admin: boolean;
+  bonus_points: number;
 }
 
 // Deterministic email per username so we can auth via supabase email/password
@@ -32,11 +33,11 @@ export function useCurrentUser() {
     const fetchProfile = async (userId: string) => {
       const { data } = await supabase
         .from("profiles")
-        .select("id, username, is_admin")
+        .select("id, username, is_admin, bonus_points")
         .eq("id", userId)
         .maybeSingle();
       if (!mounted) return;
-      setProfile(data ?? null);
+      setProfile((data as UserProfile | null) ?? null);
       setLoading(false);
     };
 
@@ -63,7 +64,6 @@ export function useCurrentUser() {
   return { profile, loading };
 }
 
-// Translate common Supabase auth errors into Arabic; otherwise show the raw message.
 function translateAuthError(msg: string): string {
   const m = msg.toLowerCase();
   if (m.includes("invalid login") || m.includes("invalid credentials")) return "كلمة السر غير صحيحة";
@@ -75,13 +75,48 @@ function translateAuthError(msg: string): string {
   if (m.includes("user already registered") || m.includes("already been registered")) return "الاسم مأخوذ، جرّب اسماً آخر";
   if (m.includes("email rate limit")) return "محاولات كثيرة، انتظر قليلاً وحاول مجدداً";
   if (m.includes("network")) return "خطأ في الشبكة، تحقق من الاتصال";
-  return msg; // surface the exact reason
+  return msg;
+}
+
+async function isUsernameTaken(username: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("username", username)
+    .maybeSingle();
+  return !!data;
+}
+
+/** Suggest a free username by appending numbers to the base. */
+export async function suggestUsername(base: string): Promise<string | null> {
+  const trimmed = base.trim();
+  if (!trimmed) return null;
+  // Try a small pool of random 2-digit suffixes to make it feel varied
+  const candidates: string[] = [];
+  for (let i = 0; i < 8; i++) {
+    const n = Math.floor(10 + Math.random() * 90);
+    candidates.push(`${trimmed}${n}`);
+  }
+  // Fallback: try sequential 1..20
+  for (let i = 1; i <= 20; i++) candidates.push(`${trimmed}${i}`);
+  for (const c of candidates) {
+    if (c.length > 24) continue;
+    // Skip re-checking the same one twice
+    if (!(await isUsernameTaken(c))) return c;
+  }
+  return null;
+}
+
+export interface AuthResult {
+  error?: string;
+  /** If provided, the username was taken and this is a free alternative to offer the user. */
+  suggestion?: string;
 }
 
 export async function loginOrRegister(
   usernameRaw: string,
   password: string,
-): Promise<{ error?: string }> {
+): Promise<AuthResult> {
   const username = usernameRaw.trim();
   if (username.length < 2 || username.length > 24) {
     return { error: "اسم المستخدم يجب أن يكون بين 2 و 24 حرفاً" };
@@ -98,12 +133,24 @@ export async function loginOrRegister(
     .maybeSingle();
 
   if (existing) {
+    // Try login. If wrong password, suggest a free alternative name.
     const email = existing.email ?? usernameToEmail(username);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: translateAuthError(error.message) };
+    if (error) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes("invalid login") || msg.includes("invalid credentials")) {
+        const suggestion = await suggestUsername(username);
+        return {
+          error: "الاسم مأخوذ. اختر اسماً آخر أو استخدم الاقتراح.",
+          suggestion: suggestion ?? undefined,
+        };
+      }
+      return { error: translateAuthError(error.message) };
+    }
     return {};
   }
 
+  // Fresh registration
   const email = usernameToEmail(username);
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email,
@@ -113,6 +160,8 @@ export async function loginOrRegister(
     return { error: signUpError ? translateAuthError(signUpError.message) : "تعذّر إنشاء الحساب" };
   }
 
+  // Make sure we have an authenticated session BEFORE inserting the profile
+  // (RLS on profiles requires auth.uid() = id).
   if (!signUpData.session) {
     const { error: siErr } = await supabase.auth.signInWithPassword({ email, password });
     if (siErr) return { error: translateAuthError(siErr.message) };
@@ -126,8 +175,21 @@ export async function loginOrRegister(
   });
   if (insErr) {
     await supabase.auth.signOut();
-    return { error: insErr.message.toLowerCase().includes("duplicate") ? "الاسم مأخوذ، جرّب اسماً آخر" : insErr.message };
+    if (insErr.message.toLowerCase().includes("duplicate")) {
+      const suggestion = await suggestUsername(username);
+      return { error: "الاسم مأخوذ. اختر اسماً آخر أو استخدم الاقتراح.", suggestion: suggestion ?? undefined };
+    }
+    return { error: insErr.message };
   }
+
+  // Nudge the auth listener so the freshly-created profile is fetched immediately
+  // (SIGNED_IN fired before the profile row existed).
+  try {
+    await supabase.auth.updateUser({ data: { username } });
+  } catch {
+    // best-effort — profile will still load on next mount
+  }
+
   return {};
 }
 
