@@ -528,6 +528,14 @@ function Index() {
             <main key="lb" className="tab-enter flex-1 py-3">
               <Leaderboard currentUserId={profile?.id ?? null} />
             </main>
+          ) : tab === "bracket" ? (
+            <main key="bracket" className="tab-enter flex-1">
+              <BracketView isAdmin={!!profile?.is_admin} />
+            </main>
+          ) : tab === "scorers" ? (
+            <main key="scorers" className="tab-enter flex-1">
+              <ScorersView isAdmin={!!profile?.is_admin} />
+            </main>
           ) : (
             <>
               {tab === "search" && (
