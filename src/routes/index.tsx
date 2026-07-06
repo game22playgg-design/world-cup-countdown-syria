@@ -507,12 +507,12 @@ function Index() {
 
           {/* Tabs */}
           <nav className="px-3 sticky top-0 z-10 bg-[var(--background)]/95 backdrop-blur border-b border-[var(--border)]">
-            <div className="flex gap-1 py-2">
+            <div className="flex gap-1 py-2 overflow-x-auto no-scrollbar">
               {tabs.map((t) => (
                 <button
                   key={t.key}
                   onClick={() => setTab(t.key)}
-                  className={`flex-1 py-2 px-1 text-[11px] font-bold rounded-lg transition-colors ${
+                  className={`shrink-0 py-2 px-3 text-[11px] font-bold rounded-lg transition-colors whitespace-nowrap ${
                     tab === t.key
                       ? "bg-[var(--gold)] text-[var(--primary-foreground)]"
                       : "bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
