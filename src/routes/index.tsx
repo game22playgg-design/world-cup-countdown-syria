@@ -391,6 +391,8 @@ function Index() {
     { key: "today",       label: "اليوم" },
     { key: "round",       label: CURRENT_ROUND_AR },
     { key: "r32",         label: "دور الـ32 (منتهي)" },
+    { key: "bracket",     label: "المخطط" },
+    { key: "scorers",     label: "الهدافون" },
     { key: "leaderboard", label: "المتصدرون" },
     { key: "search",      label: "بحث" },
   ];
