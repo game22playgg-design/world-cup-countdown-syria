@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      bracket_slots: {
+        Row: {
+          flag: string | null
+          name_ar: string | null
+          slot_id: string
+          updated_at: string
+        }
+        Insert: {
+          flag?: string | null
+          name_ar?: string | null
+          slot_id: string
+          updated_at?: string
+        }
+        Update: {
+          flag?: string | null
+          name_ar?: string | null
+          slot_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       match_reminders: {
         Row: {
           match_id: string
@@ -158,6 +179,39 @@ export type Database = {
           id?: string
           p256dh?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      top_scorers: {
+        Row: {
+          country_ar: string | null
+          country_flag: string | null
+          created_at: string
+          goals: number
+          id: string
+          name_ar: string
+          photo_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          country_ar?: string | null
+          country_flag?: string | null
+          created_at?: string
+          goals?: number
+          id?: string
+          name_ar: string
+          photo_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          country_ar?: string | null
+          country_flag?: string | null
+          created_at?: string
+          goals?: number
+          id?: string
+          name_ar?: string
+          photo_url?: string | null
+          updated_at?: string
         }
         Relationships: []
       }

@@ -9,6 +9,8 @@ import AdminPanel from "@/components/AdminPanel";
 import { useCurrentUser, signOut } from "@/lib/auth-user";
 import { useMatchResults, useMyPredictions } from "@/lib/predictions";
 import { enablePushNotifications, pushPermissionState, pushSupported } from "@/lib/push";
+import BracketView from "@/components/BracketView";
+import ScorersView from "@/components/ScorersView";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -22,7 +24,7 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type TabKey = "today" | "round" | "r32" | "leaderboard" | "search";
+type TabKey = "today" | "round" | "r32" | "bracket" | "scorers" | "leaderboard" | "search";
 
 const SYRIA_TZ = "Asia/Damascus";
 
@@ -389,6 +391,8 @@ function Index() {
     { key: "today",       label: "اليوم" },
     { key: "round",       label: CURRENT_ROUND_AR },
     { key: "r32",         label: "دور الـ32 (منتهي)" },
+    { key: "bracket",     label: "المخطط" },
+    { key: "scorers",     label: "الهدافون" },
     { key: "leaderboard", label: "المتصدرون" },
     { key: "search",      label: "بحث" },
   ];
@@ -503,12 +507,12 @@ function Index() {
 
           {/* Tabs */}
           <nav className="px-3 sticky top-0 z-10 bg-[var(--background)]/95 backdrop-blur border-b border-[var(--border)]">
-            <div className="flex gap-1 py-2">
+            <div className="flex gap-1 py-2 overflow-x-auto no-scrollbar">
               {tabs.map((t) => (
                 <button
                   key={t.key}
                   onClick={() => setTab(t.key)}
-                  className={`flex-1 py-2 px-1 text-[11px] font-bold rounded-lg transition-colors ${
+                  className={`shrink-0 py-2 px-3 text-[11px] font-bold rounded-lg transition-colors whitespace-nowrap ${
                     tab === t.key
                       ? "bg-[var(--gold)] text-[var(--primary-foreground)]"
                       : "bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
@@ -523,6 +527,14 @@ function Index() {
           {tab === "leaderboard" ? (
             <main key="lb" className="tab-enter flex-1 py-3">
               <Leaderboard currentUserId={profile?.id ?? null} />
+            </main>
+          ) : tab === "bracket" ? (
+            <main key="bracket" className="tab-enter flex-1">
+              <BracketView isAdmin={!!profile?.is_admin} />
+            </main>
+          ) : tab === "scorers" ? (
+            <main key="scorers" className="tab-enter flex-1">
+              <ScorersView isAdmin={!!profile?.is_admin} />
             </main>
           ) : (
             <>
