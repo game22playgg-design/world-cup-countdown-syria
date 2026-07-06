@@ -227,7 +227,7 @@ function PredictionsModal({
                     </div>
                     {canSeeScore ? (
                       <div dir="ltr" className="font-mono font-bold text-lg px-2 whitespace-nowrap">
-                        {p.home_score} - {p.away_score}
+                        {p.away_score} - {p.home_score}
                       </div>
                     ) : (
                       <div className="font-mono font-bold text-lg px-2 whitespace-nowrap text-[var(--muted-foreground)]">
