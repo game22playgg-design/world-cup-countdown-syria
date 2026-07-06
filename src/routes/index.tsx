@@ -9,6 +9,8 @@ import AdminPanel from "@/components/AdminPanel";
 import { useCurrentUser, signOut } from "@/lib/auth-user";
 import { useMatchResults, useMyPredictions } from "@/lib/predictions";
 import { enablePushNotifications, pushPermissionState, pushSupported } from "@/lib/push";
+import BracketView from "@/components/BracketView";
+import ScorersView from "@/components/ScorersView";
 
 export const Route = createFileRoute("/")({
   head: () => ({
