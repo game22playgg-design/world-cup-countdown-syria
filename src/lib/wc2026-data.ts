@@ -136,8 +136,29 @@ export const MATCHES: Match[] = [
     awayName: "Colombia",    awayFlag: F("C","O"), awayNameAr: "كولومبيا",
     stage: "r16", city: "-", cityAr: "-", stadium: "-", stadiumAr: "-" },
 
+  // ============ Quarter-finals (July 9 – 12, 2026) ============
+  { id: "qf-1", kickoffUtc: "2026-07-09T20:00:00Z",
+    homeName: "Morocco", homeFlag: F("M","A"), homeNameAr: "المغرب",
+    awayName: "France",  awayFlag: F("F","R"), awayNameAr: "فرنسا",
+    stage: "qf", city: "-", cityAr: "-", stadium: "-", stadiumAr: "-" },
+  { id: "qf-2", kickoffUtc: "2026-07-10T19:00:00Z",
+    homeName: "Spain",   homeFlag: F("E","S"), homeNameAr: "إسبانيا",
+    awayName: "Belgium", awayFlag: F("B","E"), awayNameAr: "بلجيكا",
+    stage: "qf", city: "-", cityAr: "-", stadium: "-", stadiumAr: "-" },
+  { id: "qf-3", kickoffUtc: "2026-07-10T21:00:00Z",
+    homeName: "Norway",  homeFlag: F("N","O"), homeNameAr: "النرويج",
+    awayName: "England", awayFlag: F("G","B"), awayNameAr: "إنكلترا",
+    stage: "qf", city: "-", cityAr: "-", stadium: "-", stadiumAr: "-" },
+  { id: "qf-4", kickoffUtc: "2026-07-12T01:00:00Z",
+    homeName: "Argentina",   homeFlag: F("A","R"), homeNameAr: "الأرجنتين",
+    awayName: "Switzerland", awayFlag: F("C","H"), awayNameAr: "سويسرا",
+    stage: "qf", city: "-", cityAr: "-", stadium: "-", stadiumAr: "-" },
+
 ];
 
-export const CURRENT_ROUND_AR = "دور الـ16";
-export const CURRENT_ROUND_DATES_AR = "4 – 7 تموز 2026";
+export const CURRENT_ROUND_AR = "ربع النهائي";
+export const CURRENT_ROUND_DATES_AR = "9 – 12 تموز 2026";
+
+
+
 

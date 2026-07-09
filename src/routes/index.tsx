@@ -24,7 +24,7 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type TabKey = "today" | "round" | "r32" | "bracket" | "scorers" | "leaderboard" | "search";
+type TabKey = "today" | "round" | "r16" | "r32" | "bracket" | "scorers" | "leaderboard" | "search";
 
 const SYRIA_TZ = "Asia/Damascus";
 
@@ -374,7 +374,8 @@ function Index() {
 
   const visible = useMemo(() => {
     if (tab === "today") return allMatches.filter((m) => isSameSyriaDay(m.kickoffUtc, now));
-    if (tab === "round") return allMatches.filter((m) => m.stage === "r16");
+    if (tab === "round") return allMatches.filter((m) => m.stage === "qf");
+    if (tab === "r16") return allMatches.filter((m) => m.stage === "r16");
     if (tab === "r32") return allMatches.filter((m) => m.stage === "r32");
     if (tab === "search") {
       const q = query.trim().toLowerCase();
@@ -390,6 +391,7 @@ function Index() {
   const tabs: { key: TabKey; label: string }[] = [
     { key: "today",       label: "اليوم" },
     { key: "round",       label: CURRENT_ROUND_AR },
+    { key: "r16",         label: "ثمن النهائي (منتهي)" },
     { key: "r32",         label: "دور الـ32 (منتهي)" },
     { key: "bracket",     label: "المخطط" },
     { key: "scorers",     label: "الهدافون" },
@@ -550,7 +552,7 @@ function Index() {
                 </div>
               )}
               <main key={tab} className="px-3 py-4 flex flex-col gap-3 tab-enter flex-1">
-                {tab === "r32" && (
+                {(tab === "r32" || tab === "r16") && (
                   <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-center">
                     <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--muted-foreground)]">
                       هذا الدور <span className="text-[var(--gold)]">منتهي</span> — للاطلاع فقط
