@@ -97,9 +97,16 @@ export default function Leaderboard({ currentUserId }: { currentUserId: string |
               <th className="text-right p-2 sticky right-0 bg-[var(--card)] z-10">#</th>
               <th className="text-right p-2 sticky right-8 bg-[var(--card)] z-10">اللاعب</th>
               {stages.map((s) => (
-                <th key={s} className="text-center p-2">{STAGE_LABEL[s]}</th>
+                <th
+                  key={s}
+                  className={`text-center p-2 transition-colors ${sortBy === s ? "text-[var(--gold)] font-bold" : ""}`}
+                >
+                  {STAGE_LABEL[s]}
+                </th>
               ))}
-              <th className="text-center p-2 text-[var(--gold)]">الإجمالي</th>
+              {sortBy === "total" && (
+                <th className="text-center p-2 text-[var(--gold)]">الإجمالي</th>
+              )}
               <th className="text-center p-2"></th>
             </tr>
           </thead>
@@ -115,11 +122,18 @@ export default function Leaderboard({ currentUserId }: { currentUserId: string |
                     {isMe && <span className="text-[9px] text-[var(--gold)] mr-1">(أنت)</span>}
                   </td>
                   {stages.map((s) => (
-                    <td key={s} className="p-2 text-center font-mono text-[var(--muted-foreground)]">
+                    <td
+                      key={s}
+                      className={`p-2 text-center font-mono transition-colors ${
+                        sortBy === s ? "text-[var(--gold)] font-bold" : "text-[var(--muted-foreground)]"
+                      }`}
+                    >
                       {r.per_round[s] ?? 0}
                     </td>
                   ))}
-                  <td className="p-2 text-center font-mono font-bold text-[var(--gold)]">{r.total_points}</td>
+                  {sortBy === "total" && (
+                    <td className="p-2 text-center font-mono font-bold text-[var(--gold)]">{r.total_points}</td>
+                  )}
                   <td className="p-2 text-center">
                     <button
                       onClick={() => setOpenUser({ id: r.user_id, username: r.username })}
