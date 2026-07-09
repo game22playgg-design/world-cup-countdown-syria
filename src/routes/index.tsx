@@ -374,7 +374,8 @@ function Index() {
 
   const visible = useMemo(() => {
     if (tab === "today") return allMatches.filter((m) => isSameSyriaDay(m.kickoffUtc, now));
-    if (tab === "round") return allMatches.filter((m) => m.stage === "r16");
+    if (tab === "round") return allMatches.filter((m) => m.stage === "qf");
+    if (tab === "r16") return allMatches.filter((m) => m.stage === "r16");
     if (tab === "r32") return allMatches.filter((m) => m.stage === "r32");
     if (tab === "search") {
       const q = query.trim().toLowerCase();
