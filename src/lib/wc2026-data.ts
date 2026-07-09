@@ -160,8 +160,5 @@ export const CURRENT_ROUND_AR = "ربع النهائي";
 export const CURRENT_ROUND_DATES_AR = "9 – 12 تموز 2026";
 
 
-];
 
-export const CURRENT_ROUND_AR = "دور الـ16";
-export const CURRENT_ROUND_DATES_AR = "4 – 7 تموز 2026";
 
