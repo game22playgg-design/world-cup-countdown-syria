@@ -20,6 +20,7 @@ function matchFinished(iso: string, now: Date) {
 export default function Leaderboard({ currentUserId }: { currentUserId: string | null }) {
   const rows = useLeaderboard();
   const [openUser, setOpenUser] = useState<{ id: string; username: string } | null>(null);
+  const [sortBy, setSortBy] = useState<"total" | Match["stage"]>("total");
 
   const stages = useMemo(() => {
     const set = new Set<Match["stage"]>();
@@ -29,15 +30,24 @@ export default function Leaderboard({ currentUserId }: { currentUserId: string |
   }, []);
 
   const ranked = useMemo(() => {
+    const scored = rows.map((r) => ({
+      ...r,
+      _score: sortBy === "total" ? r.total_points : r.per_round[sortBy] ?? 0,
+    }));
+    scored.sort((a, b) => {
+      if (b._score !== a._score) return b._score - a._score;
+      return b.exact_count - a.exact_count;
+    });
     let lastPts = -1;
     let lastRank = 0;
-    return rows.map((r, i) => {
-      const rank = r.total_points === lastPts ? lastRank : i + 1;
-      lastPts = r.total_points;
+    return scored.map((r, i) => {
+      const rank = r._score === lastPts ? lastRank : i + 1;
+      lastPts = r._score;
       lastRank = rank;
       return { ...r, rank };
     });
-  }, [rows]);
+  }, [rows, sortBy]);
+
 
   if (ranked.length === 0) {
     return (
