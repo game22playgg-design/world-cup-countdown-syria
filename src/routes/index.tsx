@@ -556,8 +556,9 @@ function Index() {
         </div>
       )}
 
-      <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-        <div className="mx-auto max-w-[480px] min-h-screen flex flex-col pb-24">
+      <div className="app-shell bg-[var(--background)] text-[var(--foreground)]">
+        <div className="content-area">
+          <div className="mx-auto max-w-[480px] flex flex-col pb-[calc(6rem+env(safe-area-inset-bottom))]">
           {/* Top bar */}
           <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 border-b border-[var(--border)]">
             <div className="min-w-0">
@@ -689,10 +690,11 @@ function Index() {
             <div>جميع التوقيتات بتوقيت دمشق (UTC+3)</div>
             <div>3 نقاط للنتيجة الدقيقة · 1 للفائز الصحيح · 0 للخطأ</div>
           </footer>
+          </div>
         </div>
 
         {/* Bottom nav */}
-        <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-[var(--border)] bg-[var(--card)]/95 backdrop-blur">
+        <nav className="bottom-nav border-t border-[var(--border)] bg-[var(--card)]/95 backdrop-blur">
           <div className="mx-auto max-w-[480px] flex px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
             {([
               { key: "home", label: "الرئيسية", Icon: IconBall },
@@ -716,6 +718,7 @@ function Index() {
           </div>
         </nav>
       </div>
+
     </>
   );
 }
