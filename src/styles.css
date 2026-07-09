@@ -27,60 +27,47 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-green: var(--green);
+  --color-green-soft: var(--green-soft);
   --color-stadium-red: var(--stadium-red);
-  --font-display: "Bebas Neue", "Impact", sans-serif;
-  --font-mono: "IBM Plex Mono", monospace;
+  --color-red: var(--stadium-red);
+  --color-surface-2: var(--surface-2);
+  --color-text-3: var(--text-3);
+  --font-display: "Rajdhani", "Bebas Neue", "Impact", sans-serif;
+  --font-mono: "Rajdhani", "IBM Plex Mono", monospace;
   --font-arabic: "Cairo", "Tajawal", sans-serif;
 }
 
 :root {
   --radius: 0.75rem;
-  /* Stadium Night palette (dark default) */
-  --background: #0A0E1A;
-  --foreground: #F0EDE6;
-  --card: #111827;
-  --card-foreground: #F0EDE6;
-  --primary: #C9A227;
-  --primary-foreground: #0A0E1A;
-  --secondary: #1a2235;
-  --secondary-foreground: #F0EDE6;
-  --muted: #1a2235;
-  --muted-foreground: #6B7280;
-  --accent: #C9A227;
-  --accent-foreground: #0A0E1A;
-  --destructive: #E03B3B;
-  --destructive-foreground: #F0EDE6;
-  --border: #1f2a40;
-  --input: #1f2a40;
-  --ring: #C9A227;
-  --gold: #C9A227;
-  --stadium-red: #E03B3B;
-  --popover: #111827;
-  --popover-foreground: #F0EDE6;
-}
-
-.light {
-  --background: #F0EDE6;
-  --foreground: #0A0E1A;
-  --card: #ffffff;
-  --card-foreground: #0A0E1A;
-  --primary: #C9A227;
-  --primary-foreground: #0A0E1A;
-  --secondary: #e8e3d6;
-  --secondary-foreground: #0A0E1A;
-  --muted: #e8e3d6;
-  --muted-foreground: #6B7280;
-  --accent: #C9A227;
-  --accent-foreground: #0A0E1A;
-  --destructive: #E03B3B;
-  --destructive-foreground: #ffffff;
-  --border: #d6d0bf;
-  --input: #d6d0bf;
-  --ring: #C9A227;
-  --gold: #b8911f;
-  --stadium-red: #E03B3B;
-  --popover: #ffffff;
-  --popover-foreground: #0A0E1A;
+  /* موعد — Design System v2 */
+  --background: #0A0F1C;
+  --foreground: #F5F6FA;
+  --card: #131B2E;
+  --card-foreground: #F5F6FA;
+  --surface-2: #1A2338;
+  --primary: #F0A93A;
+  --primary-foreground: #1a1200;
+  --secondary: #1A2338;
+  --secondary-foreground: #F5F6FA;
+  --muted: #1A2338;
+  --muted-foreground: #8993AB;
+  --text-3: #5B6580;
+  --accent: #F0A93A;
+  --accent-foreground: #1a1200;
+  --destructive: #E6425A;
+  --destructive-foreground: #F5F6FA;
+  --border: #232D42;
+  --input: #232D42;
+  --ring: #F0A93A;
+  --gold: #F0A93A;
+  --gold-soft: rgba(240,169,58,.14);
+  --green: #2FD675;
+  --green-soft: rgba(47,214,117,.14);
+  --stadium-red: #E6425A;
+  --popover: #131B2E;
+  --popover-foreground: #F5F6FA;
 }
 
 @layer base {
@@ -95,23 +82,19 @@
   }
 }
 
-@keyframes gold-pulse {
-  0%, 100% { text-shadow: 0 0 8px rgba(201, 162, 39, 0.35), 0 0 2px rgba(201, 162, 39, 0.5); opacity: 1; }
-  50% { text-shadow: 0 0 16px rgba(201, 162, 39, 0.7), 0 0 4px rgba(201, 162, 39, 0.9); opacity: 0.92; }
-}
 @keyframes tab-fade {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 @utility countdown-digit {
-  font-family: var(--font-mono);
+  font-family: var(--font-display);
   font-variant-numeric: tabular-nums;
   color: var(--gold);
-  text-shadow: 0 0 10px rgba(201, 162, 39, 0.25), 0 0 2px rgba(201, 162, 39, 0.4);
+  font-weight: 700;
 }
 @utility tab-enter {
-  animation: tab-fade 150ms ease-out;
+  animation: tab-fade 180ms ease-out;
 }
 @utility no-scrollbar {
   scrollbar-width: none;

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { MATCHES, CURRENT_ROUND_AR, CURRENT_ROUND_DATES_AR, type Match } from "@/lib/wc2026-data";
+import { MATCHES, type Match } from "@/lib/wc2026-data";
 import SplashScreen from "@/components/SplashScreen";
 import UsernameGate from "@/components/UsernameGate";
 import PredictionBox from "@/components/PredictionBox";
@@ -24,9 +24,26 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type TabKey = "today" | "round" | "r16" | "r32" | "bracket" | "scorers" | "leaderboard" | "search";
+type Screen = "home" | "leaderboard" | "stats";
+type StatsTab = "scorers" | "bracket";
 
 const SYRIA_TZ = "Asia/Damascus";
+
+const STAGE_LABEL: Record<Match["stage"], string> = {
+  r32: "دور الـ32",
+  r16: "ثمن النهائي",
+  qf: "ربع النهائي",
+  sf: "نصف النهائي",
+  final: "النهائي",
+};
+
+const ROUNDS: { key: Match["stage"]; label: string; short: string }[] = [
+  { key: "r32", label: "دور الـ32", short: "الـ32" },
+  { key: "r16", label: "ثمن النهائي", short: "الـ16" },
+  { key: "qf", label: "ربع النهائي", short: "ربع" },
+  { key: "sf", label: "نصف النهائي", short: "نصف" },
+  { key: "final", label: "النهائي", short: "النهائي" },
+];
 
 function fmtSyria(iso: string) {
   const d = new Date(iso);
@@ -40,13 +57,7 @@ function fmtSyria(iso: string) {
   const minute = parts.find((p) => p.type === "minute")?.value ?? "";
   const dp = parts.find((p) => p.type === "dayPeriod")?.value?.toUpperCase() ?? "";
   const period = dp === "AM" ? "صباحاً" : "مساءً";
-  const time = `${hour}:${minute} ${period}`;
-  return { date, time };
-}
-
-function isSameSyriaDay(iso: string, now: Date) {
-  const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: SYRIA_TZ, year: "numeric", month: "2-digit", day: "2-digit" });
-  return fmt.format(new Date(iso)) === fmt.format(now);
+  return { date, time: `${hour}:${minute} ${period}` };
 }
 
 function matchStatus(iso: string, now: Date): "upcoming" | "live" | "finished" {
@@ -66,13 +77,23 @@ function useNow(intervalMs = 1000) {
   return now;
 }
 
-function Countdown({ target }: { target: Match | null }) {
+function roundStatus(round: Match["stage"], now: Date): "done" | "active" | "upcoming" {
+  const rMatches = MATCHES.filter((m) => m.stage === round);
+  if (rMatches.length === 0) return "upcoming";
+  const statuses = rMatches.map((m) => matchStatus(m.kickoffUtc, now));
+  if (statuses.every((s) => s === "finished")) return "done";
+  if (statuses.every((s) => s === "upcoming")) return "upcoming";
+  return "active";
+}
+
+function CountdownCard({ target }: { target: Match | null }) {
   const now = useNow(1000);
   if (!target) {
     return (
-      <div className="text-center py-10 px-4">
-        <div className="font-[var(--font-display)] text-2xl text-[var(--gold)]">انتهى هذا الدور</div>
-        <div className="text-xs text-[var(--muted-foreground)] mt-2 font-mono">بانتظار جدول الدور القادم</div>
+      <div className="rounded-2xl border border-[var(--border)] bg-gradient-to-b from-[var(--card)] to-[var(--surface-2)] p-6 text-center">
+        <div className="font-[var(--font-display)] text-2xl text-[var(--gold)] tracking-wider">
+          بانتظار جدول الدور القادم
+        </div>
       </div>
     );
   }
@@ -82,54 +103,47 @@ function Countdown({ target }: { target: Match | null }) {
   const m = Math.floor((diff % 3600000) / 60000);
   const s = Math.floor((diff % 60000) / 1000);
   const pad = (n: number) => n.toString().padStart(2, "0");
-
   const { date, time } = fmtSyria(target.kickoffUtc);
+  const segs = [
+    { v: pad(d), label: "يوم" },
+    { v: pad(h), label: "ساعة" },
+    { v: pad(m), label: "دقيقة" },
+    { v: pad(s), label: "ثانية" },
+  ];
 
   return (
-    <div className="relative px-4 pt-6 pb-8">
-      <div className="absolute inset-0 bg-gradient-to-b from-[#C9A227]/8 via-transparent to-transparent pointer-events-none" />
-      <div className="relative text-center">
-        <div className="text-xs tracking-[0.3em] text-[var(--muted-foreground)] font-mono mb-3">
-          المباراة القادمة • بتوقيت دمشق
-        </div>
-        <div dir="ltr" className="flex items-center justify-center gap-1 sm:gap-2 select-none">
-          {[
-            { v: pad(d), label: "يوم" },
-            { v: pad(h), label: "ساعة" },
-            { v: pad(m), label: "دقيقة" },
-            { v: pad(s), label: "ثانية" },
-          ].map((seg, i) => (
-            <div key={i} className="flex items-end">
-              <div className="flex flex-col items-center">
-                <div className="countdown-digit text-5xl sm:text-6xl font-bold leading-none tracking-tight">
-                  {seg.v}
-                </div>
-                <div className="text-[10px] mt-2 text-[var(--muted-foreground)] font-mono uppercase tracking-widest">
-                  {seg.label}
-                </div>
+    <div className="rounded-2xl border border-[var(--border)] bg-gradient-to-b from-[var(--card)] to-[var(--surface-2)] p-5">
+      <div className="text-center text-[11px] text-[var(--muted-foreground)] mb-3">
+        المباراة القادمة · بتوقيت <b className="text-[var(--gold)]">دمشق</b>
+      </div>
+      <div dir="ltr" className="flex justify-center items-start gap-2 mb-4">
+        {segs.map((seg, i) => (
+          <div key={i} className="flex items-start gap-2">
+            <div className="text-center">
+              <div className="countdown-digit text-2xl sm:text-3xl bg-[var(--gold-soft)] rounded-lg px-3 py-1 min-w-[52px]">
+                {seg.v}
               </div>
-              {i < 3 && (
-                <div className="countdown-digit text-5xl sm:text-6xl font-bold leading-none px-1 pb-5 opacity-60">:</div>
-              )}
+              <div className="text-[9px] text-[var(--text-3)] mt-1 font-medium">{seg.label}</div>
             </div>
-          ))}
-        </div>
-
-        <div className="mt-7 flex items-center justify-center gap-4">
-          <div className="flex flex-col items-center gap-2 min-w-0 flex-1">
-            <span className="text-4xl">{target.homeFlag}</span>
-            <span className="text-sm font-bold truncate w-full">{target.homeNameAr}</span>
+            {i < segs.length - 1 && (
+              <div className="font-[var(--font-display)] text-2xl sm:text-3xl text-[var(--text-3)] pt-1">:</div>
+            )}
           </div>
-          <div className="text-[var(--stadium-red)] font-[var(--font-display)] text-2xl">VS</div>
-          <div className="flex flex-col items-center gap-2 min-w-0 flex-1">
-            <span className="text-4xl">{target.awayFlag}</span>
-            <span className="text-sm font-bold truncate w-full">{target.awayNameAr}</span>
-          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-around">
+        <div className="text-center flex-1 min-w-0">
+          <div className="text-3xl mb-1">{target.homeFlag}</div>
+          <div className="text-xs font-bold text-[var(--muted-foreground)] truncate">{target.homeNameAr}</div>
         </div>
-
-        <div className="mt-5 font-mono text-xs text-[var(--muted-foreground)]">
-          {date} • {time}
+        <div className="font-[var(--font-display)] text-lg font-bold text-[var(--stadium-red)] px-3">VS</div>
+        <div className="text-center flex-1 min-w-0">
+          <div className="text-3xl mb-1">{target.awayFlag}</div>
+          <div className="text-xs font-bold text-[var(--muted-foreground)] truncate">{target.awayNameAr}</div>
         </div>
+      </div>
+      <div className="text-center text-[11px] text-[var(--text-3)] mt-3">
+        {date} · {time}
       </div>
     </div>
   );
@@ -137,72 +151,125 @@ function Countdown({ target }: { target: Match | null }) {
 
 function LiveHero({ match, result }: { match: Match; result: { home_score: number; away_score: number } | undefined }) {
   return (
-    <div className="relative px-4 pt-6 pb-8">
-      <div className="absolute inset-0 bg-gradient-to-b from-[var(--stadium-red)]/15 via-transparent to-transparent pointer-events-none" />
-      <div className="relative text-center">
-        <div className="inline-flex items-center gap-2 mb-4">
-          <span className="w-2 h-2 rounded-full bg-[var(--stadium-red)] animate-pulse" />
-          <span className="text-xs tracking-[0.3em] text-[var(--stadium-red)] font-mono">مباراة جارية الآن</span>
+    <div className="rounded-2xl border border-[var(--green)]/30 bg-gradient-to-b from-[var(--card)] to-[var(--surface-2)] p-5">
+      <div className="flex items-center justify-center gap-2 mb-4">
+        <span className="w-2 h-2 rounded-full bg-[var(--green)] animate-pulse" />
+        <span className="text-[11px] font-bold text-[var(--green)]">مباراة جارية الآن</span>
+      </div>
+      <div className="flex items-center justify-around">
+        <div className="text-center flex-1 min-w-0">
+          <div className="text-4xl mb-1">{match.homeFlag}</div>
+          <div className="text-xs font-bold truncate">{match.homeNameAr}</div>
         </div>
-        <div className="flex items-center justify-center gap-4">
-          <div className="flex flex-col items-center gap-2 min-w-0 flex-1">
-            <span className="text-5xl">{match.homeFlag}</span>
-            <span className="text-sm font-bold truncate w-full">{match.homeNameAr}</span>
-          </div>
-          <div dir="ltr" className="font-mono font-bold text-5xl text-[var(--gold)] whitespace-nowrap">
-            {result ? `${result.home_score} - ${result.away_score}` : "— : —"}
-          </div>
-          <div className="flex flex-col items-center gap-2 min-w-0 flex-1">
-            <span className="text-5xl">{match.awayFlag}</span>
-            <span className="text-sm font-bold truncate w-full">{match.awayNameAr}</span>
-          </div>
+        <div dir="ltr" className="font-[var(--font-display)] font-bold text-4xl text-[var(--gold)] whitespace-nowrap px-3">
+          {result ? `${result.home_score} - ${result.away_score}` : "— : —"}
         </div>
-        <div className="mt-4 text-[10px] font-mono text-[var(--muted-foreground)] uppercase tracking-widest">
-          {STAGE_LABEL[match.stage]}
+        <div className="text-center flex-1 min-w-0">
+          <div className="text-4xl mb-1">{match.awayFlag}</div>
+          <div className="text-xs font-bold truncate">{match.awayNameAr}</div>
         </div>
+      </div>
+      <div className="text-center text-[10px] font-bold text-[var(--gold)] mt-3 tracking-wider">
+        {STAGE_LABEL[match.stage]}
+      </div>
+    </div>
+  );
+}
+
+function RoundStepper({
+  now, selected, onSelect,
+}: {
+  now: Date; selected: Match["stage"]; onSelect: (r: Match["stage"]) => void;
+}) {
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <div className="text-sm font-extrabold">مخطط البطولة</div>
+        <div className="text-[10px] text-[var(--text-3)] font-[var(--font-display)] tracking-wider">TOURNAMENT PROGRESS</div>
+      </div>
+      <div className="flex items-start px-1">
+        {ROUNDS.map((r, i) => {
+          const status = roundStatus(r.key, now);
+          const isSelected = r.key === selected;
+          const done = status === "done";
+          // In RTL, first step should be on the right. The connector line renders to the RIGHT of each dot
+          // (i.e., toward the previous step). We hide it on the first item.
+          return (
+            <button
+              key={r.key}
+              onClick={() => onSelect(r.key)}
+              className="flex-1 flex flex-col items-center relative cursor-pointer group"
+            >
+              {i > 0 && (
+                <div
+                  className={`absolute top-[13px] right-1/2 w-full h-[2px] z-0 transition-colors ${
+                    done || (roundStatus(ROUNDS[i - 1].key, now) === "done" && (done || isSelected))
+                      ? "bg-[var(--gold)]"
+                      : "bg-[var(--border)]"
+                  }`}
+                />
+              )}
+              <div
+                className={`z-10 rounded-full flex items-center justify-center font-[var(--font-display)] font-bold transition-all ${
+                  done
+                    ? "w-[26px] h-[26px] bg-[var(--gold)] border-2 border-[var(--gold)] text-[var(--primary-foreground)]"
+                    : isSelected
+                    ? "w-[30px] h-[30px] bg-[var(--background)] border-2 border-[var(--gold)] text-[var(--gold)] shadow-[0_0_0_4px_var(--gold-soft)]"
+                    : "w-[26px] h-[26px] bg-[var(--card)] border-2 border-[var(--border)] text-[var(--text-3)]"
+                }`}
+              >
+                {done ? "✓" : ""}
+              </div>
+              <div
+                className={`text-[10px] font-bold mt-2 max-w-[54px] leading-tight ${
+                  isSelected ? "text-[var(--gold)]" : done ? "text-[var(--muted-foreground)]" : "text-[var(--text-3)]"
+                }`}
+              >
+                {r.short}
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
 }
 
 function StatusBadge({ status, hasResult }: { status: "upcoming" | "live" | "finished"; hasResult: boolean }) {
-  const map = {
-    upcoming: { label: "قادمة", cls: "bg-[var(--secondary)] text-[var(--muted-foreground)]" },
-    live:     { label: "جارية", cls: "bg-[var(--stadium-red)] text-white animate-pulse" },
-    finished: { label: hasResult ? "انتهت" : "بانتظار النتيجة", cls: "bg-transparent border border-[var(--border)] text-[var(--muted-foreground)]" },
-  } as const;
-  const s = map[status];
-  return <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${s.cls}`}>{s.label}</span>;
+  if (status === "live") {
+    return (
+      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[var(--green-soft)] text-[var(--green)] flex items-center gap-1">
+        <span className="w-1.5 h-1.5 rounded-full bg-[var(--green)] animate-pulse" />
+        مباشر
+      </span>
+    );
+  }
+  if (status === "finished") {
+    return (
+      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[var(--surface-2)] text-[var(--text-3)] border border-[var(--border)]">
+        {hasResult ? "انتهت" : "بانتظار النتيجة"}
+      </span>
+    );
+  }
+  return (
+    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[var(--gold-soft)] text-[var(--gold)]">
+      قادمة
+    </span>
+  );
 }
 
-const STAGE_LABEL: Record<Match["stage"], string> = {
-  r32: "دور الـ32",
-  r16: "ثمن النهائي",
-  qf: "ربع النهائي",
-  sf: "نصف النهائي",
-  final: "النهائي",
-};
-
-/** Two-team score row aligned under each flag/name. Used for Final Result & Your Prediction. */
-function ScoreRow({
-  label, home, away, tone,
-}: {
-  label: string;
-  home: number;
-  away: number;
-  tone: "gold" | "muted";
-}) {
+function ScoreRow({ label, home, away, tone }: { label: string; home: number; away: number; tone: "gold" | "muted" }) {
   const color = tone === "gold" ? "text-[var(--gold)]" : "text-[var(--foreground)]";
-  const bg = tone === "gold" ? "bg-[var(--gold)]/8 border-[var(--gold)]/30" : "bg-[var(--background)] border-[var(--border)]";
+  const bg = tone === "gold" ? "bg-[var(--gold-soft)] border-[var(--gold)]/30" : "bg-[var(--surface-2)] border-[var(--border)]";
   return (
     <div className={`mt-3 rounded-lg border ${bg} px-3 py-2`}>
-      <div className="text-[9px] font-mono uppercase tracking-widest text-[var(--muted-foreground)] text-center mb-1">
+      <div className="text-[9px] uppercase tracking-widest text-[var(--muted-foreground)] text-center mb-1">
         {label}
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-        <div className={`text-center font-mono font-bold text-2xl ${color}`}>{home}</div>
-        <div className="text-[var(--muted-foreground)] font-bold">-</div>
-        <div className={`text-center font-mono font-bold text-2xl ${color}`}>{away}</div>
+        <div className={`text-center font-[var(--font-display)] font-bold text-2xl ${color}`}>{home}</div>
+        <div className="text-[var(--text-3)] font-bold">-</div>
+        <div className={`text-center font-[var(--font-display)] font-bold text-2xl ${color}`}>{away}</div>
       </div>
     </div>
   );
@@ -220,13 +287,13 @@ function MatchCard({
   const status = matchStatus(match.kickoffUtc, now);
   const pts = prediction?.points;
   const ptsColor =
-    pts === 3 ? "text-[var(--gold)]" : pts === 1 ? "text-[#86ac6f]" : pts === 0 ? "text-[var(--stadium-red)]" : "text-[var(--muted-foreground)]";
+    pts === 3 ? "text-[var(--gold)]" : pts === 1 ? "text-[var(--green)]" : pts === 0 ? "text-[var(--stadium-red)]" : "text-[var(--muted-foreground)]";
 
   return (
-    <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 shadow-sm">
+    <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] font-mono tracking-widest text-[var(--gold)] uppercase">{STAGE_LABEL[match.stage]}</span>
         <StatusBadge status={status} hasResult={!!result} />
+        <span className="text-[11px] font-bold text-[var(--gold)]">{STAGE_LABEL[match.stage]}</span>
       </div>
 
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
@@ -234,9 +301,9 @@ function MatchCard({
           <span className="text-3xl">{match.homeFlag}</span>
           <span className="text-sm font-bold text-center truncate w-full">{match.homeNameAr}</span>
         </div>
-        <div className="font-mono text-center">
-          <div className="text-lg font-bold text-[var(--foreground)]">{time}</div>
-          <div className="text-[10px] text-[var(--muted-foreground)] mt-0.5">{date}</div>
+        <div className="text-center">
+          <div className="font-[var(--font-display)] text-lg font-bold text-[var(--foreground)]">{time}</div>
+          <div className="text-[10px] text-[var(--text-3)] mt-0.5">{date}</div>
         </div>
         <div className="flex flex-col items-center gap-1 min-w-0">
           <span className="text-3xl">{match.awayFlag}</span>
@@ -244,7 +311,6 @@ function MatchCard({
         </div>
       </div>
 
-      {/* Final result block — replaces stadium line */}
       {result && (
         <>
           <ScoreRow label="النتيجة النهائية" home={result.home_score} away={result.away_score} tone="gold" />
@@ -253,7 +319,7 @@ function MatchCard({
               href={result.highlights_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 flex items-center justify-center gap-2 text-xs font-bold text-[var(--gold)] border border-[var(--gold)]/40 hover:bg-[var(--gold)]/10 rounded-lg py-2 transition-colors"
+              className="mt-2 flex items-center justify-center gap-2 text-xs font-bold text-[var(--gold)] border border-[var(--gold)]/40 hover:bg-[var(--gold-soft)] rounded-lg py-2 transition-colors"
             >
               <span>▶</span>
               <span>مشاهدة ملخص المباراة</span>
@@ -262,12 +328,11 @@ function MatchCard({
         </>
       )}
 
-      {/* Your prediction (only when it exists — otherwise PredictionBox handles input/CTA) */}
       {prediction && (
         <>
           <ScoreRow label="توقعك" home={prediction.home_score} away={prediction.away_score} tone="muted" />
           {result && pts != null && (
-            <div className={`text-center mt-2 font-[var(--font-display)] text-base tracking-wider ${ptsColor}`}>
+            <div className={`text-center mt-2 font-[var(--font-display)] text-base font-bold tracking-wider ${ptsColor}`}>
               {pts} {pts === 1 ? "نقطة" : "نقاط"}
             </div>
           )}
@@ -286,31 +351,74 @@ function MatchCard({
   );
 }
 
+/* ---------- Icons (inline SVG) ---------- */
+const IconBall = ({ className = "" }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 2l3 4.5-1.5 5-3 0-1.5-5z" />
+    <path d="M4 9l4.5 1.5M19.5 9l-4.5 1.5M7 20l1.5-4.5M17 20l-1.5-4.5" />
+  </svg>
+);
+const IconCrown = ({ className = "" }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M3 7l4 5 5-8 5 8 4-5v11H3z" />
+    <path d="M3 20h18" />
+  </svg>
+);
+const IconChart = ({ className = "" }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M3 3v18h18" />
+    <rect x="7" y="12" width="3" height="6" />
+    <rect x="12" y="8" width="3" height="10" />
+    <rect x="17" y="4" width="3" height="14" />
+  </svg>
+);
+const IconSearch = ({ className = "" }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="M20 20l-3.5-3.5" />
+  </svg>
+);
+const IconClose = ({ className = "" }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M6 6l12 12M18 6L6 18" />
+  </svg>
+);
 
 function Index() {
-  const [tab, setTab] = useState<TabKey>("round");
+  const [screen, setScreen] = useState<Screen>("home");
+  const [statsTab, setStatsTab] = useState<StatsTab>("scorers");
+  const [showSearch, setShowSearch] = useState(false);
   const [query, setQuery] = useState("");
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [showGate, setShowGate] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showPushPrompt, setShowPushPrompt] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
+
   const now = useNow(1000);
   const { profile, loading } = useCurrentUser();
   const results = useMatchResults();
   const { predictions } = useMyPredictions(profile?.id ?? null);
 
-  // After login, offer to enable browser push notifications (only once per browser).
+  // Default selected round: first non-done round, else last round.
+  const initialRound = useMemo<Match["stage"]>(() => {
+    for (const r of ROUNDS) {
+      const st = roundStatus(r.key, new Date());
+      if (st !== "done") return r.key;
+    }
+    return ROUNDS[ROUNDS.length - 1].key;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const [selectedRound, setSelectedRound] = useState<Match["stage"]>(initialRound);
+
+  // Push prompt (unchanged logic)
   useEffect(() => {
     if (!profile) return;
     if (!pushSupported()) return;
-    const state = pushPermissionState();
-    if (state !== "default") return;
+    if (pushPermissionState() !== "default") return;
     let dismissed = false;
-    try {
-      dismissed = localStorage.getItem("moaid_push_dismissed") === "1";
-    } catch {}
+    try { dismissed = localStorage.getItem("moaid_push_dismissed") === "1"; } catch {}
     if (dismissed) return;
     const t = setTimeout(() => setShowPushPrompt(true), 1500);
     return () => clearTimeout(t);
@@ -318,94 +426,65 @@ function Index() {
 
   const dismissPushPrompt = (persist: boolean) => {
     setShowPushPrompt(false);
-    if (persist) {
-      try { localStorage.setItem("moaid_push_dismissed", "1"); } catch {}
-    }
+    if (persist) { try { localStorage.setItem("moaid_push_dismissed", "1"); } catch {} }
   };
-
   const enablePush = async () => {
     if (!profile) return;
     setPushBusy(true);
-    const res = await enablePushNotifications(profile.id);
+    await enablePushNotifications(profile.id);
     setPushBusy(false);
     dismissPushPrompt(true);
-    if (!res.ok && res.error) {
-      // silent fail — user will just not receive notifications
-      console.warn("push enable failed:", res.error);
-    }
   };
 
-
-  useEffect(() => {
-    if (typeof document !== "undefined") {
-      document.documentElement.classList.toggle("light", theme === "light");
-      document.documentElement.classList.toggle("dark", theme === "dark");
-    }
-  }, [theme]);
-
-  // Sort: upcoming/live first (chronological), then finished at bottom (chronological).
   const allMatches = useMemo(() => {
-    const byTime = [...MATCHES].sort((a, b) => +new Date(a.kickoffUtc) - +new Date(b.kickoffUtc));
-    const active: Match[] = [];
-    const done: Match[] = [];
-    byTime.forEach((m) => {
-      if (matchStatus(m.kickoffUtc, now) === "finished") done.push(m);
-      else active.push(m);
-    });
-    return [...active, ...done];
-  }, [now]);
+    return [...MATCHES].sort((a, b) => +new Date(a.kickoffUtc) - +new Date(b.kickoffUtc));
+  }, []);
 
   const liveMatch = useMemo(
     () => allMatches.find((m) => matchStatus(m.kickoffUtc, now) === "live") ?? null,
     [allMatches, now]
   );
-
   const nextMatch = useMemo(
     () => allMatches.find((m) => matchStatus(m.kickoffUtc, now) === "upcoming") ?? null,
     [allMatches, now]
   );
 
-  // My points — sum of earned prediction points + admin-set bonus
   const myTotal = useMemo(() => {
     let t = profile?.bonus_points ?? 0;
     Object.values(predictions).forEach((p) => { if (p.points != null) t += p.points; });
     return t;
   }, [predictions, profile?.bonus_points]);
 
-  const visible = useMemo(() => {
-    if (tab === "today") return allMatches.filter((m) => isSameSyriaDay(m.kickoffUtc, now));
-    if (tab === "round") return allMatches.filter((m) => m.stage === "qf");
-    if (tab === "r16") return allMatches.filter((m) => m.stage === "r16");
-    if (tab === "r32") return allMatches.filter((m) => m.stage === "r32");
-    if (tab === "search") {
-      const q = query.trim().toLowerCase();
-      if (!q) return [];
-      return allMatches.filter((m) =>
-        [m.homeName, m.awayName, m.homeNameAr, m.awayNameAr].some((n) => n.toLowerCase().includes(q))
-      );
-    }
-    return allMatches;
-  }, [allMatches, tab, query, now]);
+  // Matches for currently selected round in Home
+  const roundMatches = useMemo(
+    () => allMatches
+      .filter((m) => m.stage === selectedRound)
+      .sort((a, b) => {
+        // upcoming/live first, finished at bottom, each chronological
+        const sa = matchStatus(a.kickoffUtc, now) === "finished" ? 1 : 0;
+        const sb = matchStatus(b.kickoffUtc, now) === "finished" ? 1 : 0;
+        if (sa !== sb) return sa - sb;
+        return +new Date(a.kickoffUtc) - +new Date(b.kickoffUtc);
+      }),
+    [allMatches, selectedRound, now]
+  );
 
-
-  const tabs: { key: TabKey; label: string }[] = [
-    { key: "today",       label: "اليوم" },
-    { key: "round",       label: CURRENT_ROUND_AR },
-    { key: "r16",         label: "ثمن النهائي (منتهي)" },
-    { key: "r32",         label: "دور الـ32 (منتهي)" },
-    { key: "bracket",     label: "المخطط" },
-    { key: "scorers",     label: "الهدافون" },
-    { key: "leaderboard", label: "المتصدرون" },
-    { key: "search",      label: "بحث" },
-  ];
+  const searchResults = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return allMatches.filter((m) =>
+      [m.homeName, m.awayName, m.homeNameAr, m.awayNameAr].some((n) => n.toLowerCase().includes(q))
+    );
+  }, [allMatches, query]);
 
   return (
     <>
       <SplashScreen />
       {showGate && <UsernameGate onDone={() => setShowGate(false)} />}
       {showAdmin && profile?.is_admin && <AdminPanel onClose={() => setShowAdmin(false)} />}
+
       {showPushPrompt && profile && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[min(92vw,420px)] bg-[var(--card)] border border-[var(--gold)]/40 rounded-2xl shadow-2xl p-4">
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 w-[min(92vw,420px)] bg-[var(--card)] border border-[var(--gold)]/40 rounded-2xl shadow-2xl p-4">
           <div className="flex items-start gap-3">
             <div className="text-2xl">🔔</div>
             <div className="flex-1 min-w-0">
@@ -414,17 +493,12 @@ function Index() {
                 ذكّرك قبل كل مباراة بساعة وأخبرك بنقاطك فور احتساب النتيجة.
               </p>
               <div className="mt-3 flex gap-2">
-                <button
-                  onClick={enablePush}
-                  disabled={pushBusy}
-                  className="bg-[var(--gold)] text-[var(--primary-foreground)] px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50"
-                >
+                <button onClick={enablePush} disabled={pushBusy}
+                  className="bg-[var(--gold)] text-[var(--primary-foreground)] px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50">
                   {pushBusy ? "..." : "تفعيل"}
                 </button>
-                <button
-                  onClick={() => dismissPushPrompt(true)}
-                  className="border border-[var(--border)] text-[var(--muted-foreground)] px-3 py-1.5 rounded-lg text-xs"
-                >
+                <button onClick={() => dismissPushPrompt(true)}
+                  className="border border-[var(--border)] text-[var(--muted-foreground)] px-3 py-1.5 rounded-lg text-xs">
                   لاحقاً
                 </button>
               </div>
@@ -432,49 +506,92 @@ function Index() {
           </div>
         </div>
       )}
+
+      {/* Search overlay */}
+      {showSearch && (
+        <div className="fixed inset-0 z-50 bg-[var(--background)]/95 backdrop-blur-sm">
+          <div className="mx-auto max-w-[480px] p-4">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="relative flex-1">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-3)]">
+                  <IconSearch className="w-4 h-4" />
+                </span>
+                <input
+                  autoFocus
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="ابحث عن منتخب…"
+                  className="w-full bg-[var(--card)] border border-[var(--border)] rounded-xl pr-10 pl-4 py-3 text-sm focus:outline-none focus:border-[var(--gold)] placeholder:text-[var(--text-3)]"
+                />
+              </div>
+              <button
+                onClick={() => { setShowSearch(false); setQuery(""); }}
+                className="h-11 w-11 grid place-items-center rounded-xl bg-[var(--card)] border border-[var(--border)] text-[var(--muted-foreground)]"
+                aria-label="إغلاق"
+              >
+                <IconClose className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex flex-col gap-3 max-h-[75vh] overflow-y-auto no-scrollbar pb-8">
+              {!query.trim() ? (
+                <div className="text-center text-[var(--text-3)] py-12 text-sm">اكتب اسم منتخب للبحث.</div>
+              ) : searchResults.length === 0 ? (
+                <div className="text-center text-[var(--text-3)] py-12 text-sm">لا توجد نتائج.</div>
+              ) : (
+                searchResults.map((m) => (
+                  <MatchCard
+                    key={m.id}
+                    match={m}
+                    now={now}
+                    userId={profile?.id ?? null}
+                    prediction={predictions[m.id]}
+                    result={results[m.id]}
+                    onRequireLogin={() => setShowGate(true)}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-        <div className="mx-auto max-w-[480px] min-h-screen flex flex-col">
+        <div className="mx-auto max-w-[480px] min-h-screen flex flex-col pb-24">
           {/* Top bar */}
           <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 border-b border-[var(--border)]">
             <div className="min-w-0">
-              <h1 className="font-[var(--font-display)] tracking-wider text-xl text-[var(--foreground)] truncate">
-                موعد
-              </h1>
-              <p className="text-[10px] font-mono text-[var(--muted-foreground)] tracking-widest">
-                WORLD CUP · 2026 · {CURRENT_ROUND_DATES_AR}
+              <h1 className="font-extrabold text-lg text-[var(--foreground)] truncate">موعد</h1>
+              <p className="text-[10px] font-[var(--font-display)] text-[var(--text-3)] tracking-widest">
+                WORLD CUP · 2026
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              {/* User status */}
+              <button
+                onClick={() => setShowSearch(true)}
+                className="h-10 w-10 grid place-items-center rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--gold)] hover:border-[var(--gold)] transition-colors"
+                aria-label="بحث"
+              >
+                <IconSearch className="w-4 h-4" />
+              </button>
               {!loading && (
                 profile ? (
                   <button
                     onClick={() => setMenuOpen((v) => !v)}
-                    className="flex items-center gap-2 h-9 px-3 rounded-full border border-[var(--border)] bg-[var(--card)] hover:border-[var(--gold)] transition-colors"
+                    className="flex items-center gap-2 h-10 px-3 rounded-xl border border-[var(--border)] bg-[var(--card)] hover:border-[var(--gold)] transition-colors"
                   >
                     <span className="text-xs font-bold truncate max-w-[80px]">{profile.username}</span>
-                    <span className="text-[10px] font-mono text-[var(--gold)]">{myTotal}</span>
+                    <span className="text-[10px] font-[var(--font-display)] font-bold text-[var(--gold)]">{myTotal}</span>
                   </button>
                 ) : (
                   <button
                     onClick={() => setShowGate(true)}
-                    className="h-9 px-3 rounded-full border border-[var(--gold)] bg-[var(--gold)]/10 text-[var(--gold)] text-xs font-bold"
+                    className="h-10 px-4 rounded-xl border border-[var(--gold)] bg-[var(--gold-soft)] text-[var(--gold)] text-xs font-bold"
                   >
                     دخول
                   </button>
                 )
               )}
-              <button
-                onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
-                className="h-9 w-9 grid place-items-center rounded-full border border-[var(--border)] bg-[var(--card)] hover:border-[var(--gold)] transition-colors"
-                aria-label="تبديل الوضع"
-              >
-                {theme === "dark" ? (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-                ) : (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                )}
-              </button>
             </div>
           </header>
 
@@ -482,114 +599,122 @@ function Index() {
             <div className="px-4 py-3 border-b border-[var(--border)] bg-[var(--card)] flex items-center justify-between text-xs">
               <div>
                 <div className="text-[var(--muted-foreground)]">مجموع نقاطك</div>
-                <div className="font-mono text-lg font-bold text-[var(--gold)]">{myTotal}</div>
+                <div className="font-[var(--font-display)] text-lg font-bold text-[var(--gold)]">{myTotal}</div>
               </div>
               <div className="flex gap-2">
                 {profile.is_admin && (
                   <button onClick={() => { setShowAdmin(true); setMenuOpen(false); }}
-                    className="px-3 py-1.5 rounded bg-[var(--gold)]/20 text-[var(--gold)] text-xs font-bold">
+                    className="px-3 py-1.5 rounded-lg bg-[var(--gold-soft)] text-[var(--gold)] text-xs font-bold">
                     المشرف
                   </button>
                 )}
                 <button onClick={async () => { await signOut(); setMenuOpen(false); }}
-                  className="px-3 py-1.5 rounded border border-[var(--border)] text-[var(--muted-foreground)] text-xs">
+                  className="px-3 py-1.5 rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] text-xs">
                   خروج
                 </button>
               </div>
             </div>
           )}
 
-          {/* Hero: live match takes precedence over countdown */}
-          {liveMatch ? (
-            <LiveHero match={liveMatch} result={results[liveMatch.id]} />
-          ) : (
-            <Countdown target={nextMatch} />
-          )}
-
-
-          {/* Tabs */}
-          <nav className="px-3 sticky top-0 z-10 bg-[var(--background)]/95 backdrop-blur border-b border-[var(--border)]">
-            <div className="flex gap-1 py-2 overflow-x-auto no-scrollbar">
-              {tabs.map((t) => (
-                <button
-                  key={t.key}
-                  onClick={() => setTab(t.key)}
-                  className={`shrink-0 py-2 px-3 text-[11px] font-bold rounded-lg transition-colors whitespace-nowrap ${
-                    tab === t.key
-                      ? "bg-[var(--gold)] text-[var(--primary-foreground)]"
-                      : "bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          </nav>
-
-          {tab === "leaderboard" ? (
-            <main key="lb" className="tab-enter flex-1 py-3">
-              <Leaderboard currentUserId={profile?.id ?? null} />
-            </main>
-          ) : tab === "bracket" ? (
-            <main key="bracket" className="tab-enter flex-1">
-              <BracketView isAdmin={!!profile?.is_admin} />
-            </main>
-          ) : tab === "scorers" ? (
-            <main key="scorers" className="tab-enter flex-1">
-              <ScorersView isAdmin={!!profile?.is_admin} />
-            </main>
-          ) : (
-            <>
-              {tab === "search" && (
-                <div className="px-3 pt-3 tab-enter">
-                  <input
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="ابحث عن منتخب (عربي أو إنجليزي)…"
-                    className="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-[var(--gold)] placeholder:text-[var(--muted-foreground)]"
-                  />
-                </div>
-              )}
-              <main key={tab} className="px-3 py-4 flex flex-col gap-3 tab-enter flex-1">
-                {(tab === "r32" || tab === "r16") && (
-                  <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-center">
-                    <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--muted-foreground)]">
-                      هذا الدور <span className="text-[var(--gold)]">منتهي</span> — للاطلاع فقط
-                    </span>
-                  </div>
-                )}
-                {visible.length === 0 ? (
-                  <div className="text-center text-[var(--muted-foreground)] py-12 text-sm">
-                    {tab === "today"
-                      ? "لا توجد مباريات اليوم."
-                      : tab === "search" && !query
-                      ? "اكتب اسم منتخب للبحث."
-                      : "لا توجد مباريات."}
-                  </div>
+          {/* Screens */}
+          <div className="flex-1 px-4 py-4">
+            {screen === "home" && (
+              <div key="home" className="tab-enter flex flex-col gap-5">
+                {liveMatch ? (
+                  <LiveHero match={liveMatch} result={results[liveMatch.id]} />
                 ) : (
-                  visible.map((m) => (
-                    <MatchCard
-                      key={m.id}
-                      match={m}
-                      now={now}
-                      userId={profile?.id ?? null}
-                      prediction={predictions[m.id]}
-                      result={results[m.id]}
-                      onRequireLogin={() => setShowGate(true)}
-                    />
-                  ))
-
+                  <CountdownCard target={nextMatch} />
                 )}
-              </main>
-            </>
-          )}
 
-          <footer className="px-4 py-5 text-center text-[10px] font-mono text-[var(--muted-foreground)] border-t border-[var(--border)] space-y-1">
+                <RoundStepper now={now} selected={selectedRound} onSelect={setSelectedRound} />
+
+                <div className="flex flex-col gap-3">
+                  {roundMatches.length === 0 ? (
+                    <div className="text-center text-[var(--text-3)] text-xs py-6 px-4 rounded-xl bg-[var(--card)] border border-dashed border-[var(--border)]">
+                      لا توجد مباريات في هذا الدور بعد
+                    </div>
+                  ) : (
+                    roundMatches.map((m) => (
+                      <MatchCard
+                        key={m.id}
+                        match={m}
+                        now={now}
+                        userId={profile?.id ?? null}
+                        prediction={predictions[m.id]}
+                        result={results[m.id]}
+                        onRequireLogin={() => setShowGate(true)}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {screen === "leaderboard" && (
+              <div key="lb" className="tab-enter">
+                <Leaderboard currentUserId={profile?.id ?? null} />
+              </div>
+            )}
+
+            {screen === "stats" && (
+              <div key="stats" className="tab-enter flex flex-col gap-4">
+                <div className="flex bg-[var(--card)] border border-[var(--border)] rounded-2xl p-1">
+                  {([
+                    { key: "scorers", label: "الهدافون" },
+                    { key: "bracket", label: "مخطط كأس العالم" },
+                  ] as { key: StatsTab; label: string }[]).map((t) => (
+                    <button
+                      key={t.key}
+                      onClick={() => setStatsTab(t.key)}
+                      className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${
+                        statsTab === t.key
+                          ? "bg-[var(--gold)] text-[var(--primary-foreground)]"
+                          : "text-[var(--muted-foreground)]"
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                {statsTab === "scorers" ? (
+                  <ScorersView isAdmin={!!profile?.is_admin} />
+                ) : (
+                  <BracketView isAdmin={!!profile?.is_admin} />
+                )}
+              </div>
+            )}
+          </div>
+
+          <footer className="px-4 py-3 text-center text-[10px] text-[var(--text-3)] space-y-1">
             <div>جميع التوقيتات بتوقيت دمشق (UTC+3)</div>
-            <div className="opacity-70">3 نقاط للنتيجة الدقيقة • 1 نقطة للفائز الصحيح • 0 للخطأ</div>
+            <div>3 نقاط للنتيجة الدقيقة · 1 للفائز الصحيح · 0 للخطأ</div>
           </footer>
         </div>
+
+        {/* Bottom nav */}
+        <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-[var(--border)] bg-[var(--card)]/95 backdrop-blur">
+          <div className="mx-auto max-w-[480px] flex px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+            {([
+              { key: "home", label: "الرئيسية", Icon: IconBall },
+              { key: "leaderboard", label: "المتصدرون", Icon: IconCrown },
+              { key: "stats", label: "الإحصائيات", Icon: IconChart },
+            ] as { key: Screen; label: string; Icon: typeof IconBall }[]).map((n) => {
+              const active = screen === n.key;
+              return (
+                <button
+                  key={n.key}
+                  onClick={() => setScreen(n.key)}
+                  className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-xl transition-colors ${
+                    active ? "text-[var(--gold)]" : "text-[var(--text-3)]"
+                  }`}
+                >
+                  <n.Icon className="w-5 h-5" />
+                  <span className="text-[10px] font-bold">{n.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
       </div>
     </>
   );
