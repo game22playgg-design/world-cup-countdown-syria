@@ -24,7 +24,7 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type TabKey = "today" | "round" | "r32" | "bracket" | "scorers" | "leaderboard" | "search";
+type TabKey = "today" | "round" | "r16" | "r32" | "bracket" | "scorers" | "leaderboard" | "search";
 
 const SYRIA_TZ = "Asia/Damascus";
 
