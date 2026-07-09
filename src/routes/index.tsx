@@ -391,6 +391,7 @@ function Index() {
   const tabs: { key: TabKey; label: string }[] = [
     { key: "today",       label: "اليوم" },
     { key: "round",       label: CURRENT_ROUND_AR },
+    { key: "r16",         label: "ثمن النهائي (منتهي)" },
     { key: "r32",         label: "دور الـ32 (منتهي)" },
     { key: "bracket",     label: "المخطط" },
     { key: "scorers",     label: "الهدافون" },
