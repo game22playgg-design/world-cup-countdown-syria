@@ -59,6 +59,37 @@ export default function Leaderboard({ currentUserId }: { currentUserId: string |
 
   return (
     <div className="px-3 pt-3">
+      <div className="mb-3 flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--muted-foreground)]">
+          الترتيب حسب
+        </span>
+        <div className="flex flex-wrap gap-1">
+          <button
+            onClick={() => setSortBy("total")}
+            className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-colors ${
+              sortBy === "total"
+                ? "bg-[var(--gold)] text-[var(--primary-foreground)] border-[var(--gold)]"
+                : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--gold)]/60"
+            }`}
+          >
+            الإجمالي
+          </button>
+          {stages.map((s) => (
+            <button
+              key={s}
+              onClick={() => setSortBy(s)}
+              className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-colors ${
+                sortBy === s
+                  ? "bg-[var(--gold)] text-[var(--primary-foreground)] border-[var(--gold)]"
+                  : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--gold)]/60"
+              }`}
+            >
+              {STAGE_LABEL[s]}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="overflow-x-auto no-scrollbar rounded-xl border border-[var(--border)] bg-[var(--card)]">
         <table className="w-full text-sm min-w-full" dir="rtl">
           <thead className="text-[10px] font-mono uppercase text-[var(--muted-foreground)]">
