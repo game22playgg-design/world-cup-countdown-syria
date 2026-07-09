@@ -79,7 +79,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "موعد" },
       { name: "description", content: "مواعيد مباريات كأس العالم 2026 بتوقيت سوريا (UTC+3) مع عداد تنازلي مباشر." },
-      { name: "theme-color", content: "#0A0E1A" },
+      { name: "theme-color", content: "#0A0F1C" },
       { property: "og:title", content: "موعد" },
       { property: "og:description", content: "مواعيد مباريات كأس العالم 2026 بتوقيت سوريا (UTC+3) مع عداد تنازلي مباشر." },
       { property: "og:type", content: "website" },
@@ -103,7 +103,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600;700&family=Cairo:wght@400;600;700;900&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Rajdhani:wght@600;700&display=swap",
       },
     ],
   }),
