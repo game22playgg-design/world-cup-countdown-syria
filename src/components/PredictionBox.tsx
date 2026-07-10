@@ -146,7 +146,7 @@ export default function PredictionBox({ match, userId, prediction, result, now, 
         disabled={busy || !validScores || needsAdvance}
         className="w-full mt-3 bg-[var(--gold)] text-[var(--primary-foreground)] font-bold px-4 py-2 rounded-lg text-sm disabled:opacity-40"
       >
-        حفظ التوقع
+        {prediction ? "تحديث التوقع" : "حفظ التوقع"}
       </button>
       {err && <div className="text-[var(--stadium-red)] text-xs text-center mt-2">{err}</div>}
     </div>
