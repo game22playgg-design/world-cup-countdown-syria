@@ -15,15 +15,16 @@ export default function PredictionBox({ match, userId, prediction, result, now, 
   const kickoff = new Date(match.kickoffUtc).getTime();
   const kickedOff = now.getTime() >= kickoff;
 
-  const [homeStr, setHomeStr] = useState<string>("");
-  const [awayStr, setAwayStr] = useState<string>("");
-  const [advance, setAdvance] = useState<AdvanceSide | null>(null);
+  const [homeStr, setHomeStr] = useState<string>(prediction ? String(prediction.home_score) : "");
+  const [awayStr, setAwayStr] = useState<string>(prediction ? String(prediction.away_score) : "");
+  const [advance, setAdvance] = useState<AdvanceSide | null>(prediction?.advance_pick ?? null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (prediction || result) return null;
+  if (result) return null;
 
   if (kickedOff) {
+    if (prediction) return null;
     return (
       <div className="mt-3 pt-3 border-t border-[var(--border)] text-center text-xs text-[var(--muted-foreground)]">
         انتهى وقت التوقع
