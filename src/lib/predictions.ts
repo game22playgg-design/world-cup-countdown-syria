@@ -44,7 +44,7 @@ export function useMatchResults() {
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase.from("match_results").select("match_id, home_score, away_score, highlights_url");
+      const { data } = await supabase.from("match_results").select("match_id, home_score, away_score, highlights_url, advance_pick");
       const map: Record<string, MatchResult> = {};
       (data ?? []).forEach((r) => (map[r.match_id] = r as MatchResult));
       setResults(map);
