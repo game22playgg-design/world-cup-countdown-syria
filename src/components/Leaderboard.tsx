@@ -260,7 +260,7 @@ function PredictionsModal({
             sorted.map((p) => {
               const m = matchById[p.match_id];
               const finished = matchFinished(m.kickoffUtc, now);
-              const canSeeScore = isSelfView || finished || myPredMatchIds.has(p.match_id);
+              const canSeeScore = isSelfView || finished;
 
               const pts = p.points;
               const pillCls =
@@ -297,7 +297,7 @@ function PredictionsModal({
 
                   {!canSeeScore && (
                     <div className="mt-2 text-[11px] text-center text-[var(--muted-foreground)] leading-relaxed">
-                      يمكنك رؤية التوقع بعد توقعك للمباراة
+                      تظهر التوقعات بعد انتهاء المباراة
                     </div>
                   )}
 
