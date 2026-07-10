@@ -575,7 +575,7 @@ function Index() {
 
       <div className="app-shell bg-[var(--background)] text-[var(--foreground)]">
         <div className="content-area">
-          <div className="mx-auto max-w-[480px] flex flex-col pb-[calc(6rem+env(safe-area-inset-bottom))]">
+          <div className="mx-auto max-w-[480px] flex flex-col pb-[calc(7rem+env(safe-area-inset-bottom))]">
           {/* Top bar */}
           <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 border-b border-[var(--border)]">
             <div className="min-w-0">
