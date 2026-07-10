@@ -314,6 +314,14 @@ function MatchCard({
       {result && (
         <>
           <ScoreRow label="النتيجة النهائية" home={result.home_score} away={result.away_score} tone="gold" />
+          {result.home_score === result.away_score && result.advance_pick && (
+            <div className="mt-2 text-center text-[11px] text-[var(--muted-foreground)]">
+              المتأهّل:{" "}
+              <span className="font-bold text-[var(--gold)]">
+                {result.advance_pick === "home" ? match.homeNameAr : match.awayNameAr}
+              </span>
+            </div>
+          )}
           {result.highlights_url && (
             <a
               href={result.highlights_url}
@@ -331,6 +339,14 @@ function MatchCard({
       {prediction && (
         <>
           <ScoreRow label="توقعك" home={prediction.home_score} away={prediction.away_score} tone="muted" />
+          {prediction.home_score === prediction.away_score && prediction.advance_pick && (
+            <div className="mt-1 text-center text-[11px] text-[var(--muted-foreground)]">
+              توقعت تأهّل:{" "}
+              <span className="font-bold">
+                {prediction.advance_pick === "home" ? match.homeNameAr : match.awayNameAr}
+              </span>
+            </div>
+          )}
           {result && pts != null && (
             <div className={`text-center mt-2 font-[var(--font-display)] text-base font-bold tracking-wider ${ptsColor}`}>
               {pts} {pts === 1 ? "نقطة" : "نقاط"}
@@ -338,6 +354,7 @@ function MatchCard({
           )}
         </>
       )}
+
 
       <PredictionBox
         match={match}

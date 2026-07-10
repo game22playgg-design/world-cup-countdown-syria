@@ -5,11 +5,14 @@ import { MATCHES, type Match } from "./wc2026-data";
 export async function fetchUserPredictions(userId: string): Promise<Prediction[]> {
   const { data } = await supabase
     .from("predictions")
-    .select("match_id, home_score, away_score, points, locked_at")
+    .select("match_id, home_score, away_score, points, locked_at, advance_pick")
     .eq("user_id", userId);
   return (data ?? []) as Prediction[];
 }
 
+
+
+export type AdvanceSide = "home" | "away";
 
 export interface Prediction {
   match_id: string;
@@ -17,13 +20,16 @@ export interface Prediction {
   away_score: number;
   points: number | null;
   locked_at: string;
+  advance_pick: AdvanceSide | null;
 }
 export interface MatchResult {
   match_id: string;
   home_score: number;
   away_score: number;
   highlights_url?: string | null;
+  advance_pick: AdvanceSide | null;
 }
+
 export interface LeaderboardRow {
   user_id: string;
   username: string;
@@ -38,7 +44,7 @@ export function useMatchResults() {
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase.from("match_results").select("match_id, home_score, away_score, highlights_url");
+      const { data } = await supabase.from("match_results").select("match_id, home_score, away_score, highlights_url, advance_pick");
       const map: Record<string, MatchResult> = {};
       (data ?? []).forEach((r) => (map[r.match_id] = r as MatchResult));
       setResults(map);
@@ -64,7 +70,7 @@ export function useMyPredictions(userId: string | null) {
     if (!userId) return setPreds({});
     const { data } = await supabase
       .from("predictions")
-      .select("match_id, home_score, away_score, points, locked_at")
+      .select("match_id, home_score, away_score, points, locked_at, advance_pick")
       .eq("user_id", userId);
     const map: Record<string, Prediction> = {};
     (data ?? []).forEach((p) => (map[p.match_id] = p as Prediction));
@@ -96,26 +102,36 @@ export async function submitPrediction(
   matchId: string,
   home: number,
   away: number,
+  advancePick: AdvanceSide | null = null,
 ): Promise<{ error?: string }> {
   const { error } = await supabase.from("predictions").insert({
     user_id: userId,
     match_id: matchId,
     home_score: home,
     away_score: away,
+    advance_pick: home === away ? advancePick : null,
   });
   if (error) return { error: error.message.includes("duplicate") ? "التوقع مُسجّل مسبقاً" : "تعذّر الحفظ" };
   return {};
 }
 
-export async function upsertMatchResult(matchId: string, home: number, away: number) {
+
+export async function upsertMatchResult(
+  matchId: string,
+  home: number,
+  away: number,
+  advancePick: AdvanceSide | null = null,
+) {
   const { error } = await supabase.from("match_results").upsert({
     match_id: matchId,
     home_score: home,
     away_score: away,
+    advance_pick: home === away ? advancePick : null,
     updated_at: new Date().toISOString(),
   });
   return { error: error?.message };
 }
+
 
 export async function setHighlightsUrl(matchId: string, url: string | null) {
   const { error } = await supabase

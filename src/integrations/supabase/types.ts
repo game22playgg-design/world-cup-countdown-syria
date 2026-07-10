@@ -52,6 +52,7 @@ export type Database = {
       }
       match_results: {
         Row: {
+          advance_pick: string | null
           away_score: number
           finished_at: string
           highlights_url: string | null
@@ -60,6 +61,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          advance_pick?: string | null
           away_score: number
           finished_at?: string
           highlights_url?: string | null
@@ -68,6 +70,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          advance_pick?: string | null
           away_score?: number
           finished_at?: string
           highlights_url?: string | null
@@ -100,6 +103,7 @@ export type Database = {
       }
       predictions: {
         Row: {
+          advance_pick: string | null
           away_score: number
           home_score: number
           id: string
@@ -109,6 +113,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          advance_pick?: string | null
           away_score: number
           home_score: number
           id?: string
@@ -118,6 +123,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          advance_pick?: string | null
           away_score?: number
           home_score?: number
           id?: string
@@ -231,6 +237,17 @@ export type Database = {
     Functions: {
       calc_points: {
         Args: { aa: number; ah: number; pa: number; ph: number }
+        Returns: number
+      }
+      calc_points_v2: {
+        Args: {
+          a_adv: string
+          aa: number
+          ah: number
+          p_adv: string
+          pa: number
+          ph: number
+        }
         Returns: number
       }
     }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Match } from "@/lib/wc2026-data";
-import { submitPrediction, type Prediction, type MatchResult } from "@/lib/predictions";
+import { submitPrediction, type Prediction, type MatchResult, type AdvanceSide } from "@/lib/predictions";
 
 interface Props {
   match: Match;
@@ -11,25 +11,16 @@ interface Props {
   onRequireLogin?: () => void;
 }
 
-/**
- * Handles the *input* flow only. The parent MatchCard renders the
- * "Final Result" and "Your Prediction" blocks once data exists.
- * This component shows either:
- *   - a login CTA (guest)
- *   - "انتهى وقت التوقع" (kickoff passed, no prediction)
- *   - the input form (open, no prediction yet)
- *   - nothing (prediction already submitted — card shows it)
- */
 export default function PredictionBox({ match, userId, prediction, result, now, onRequireLogin }: Props) {
   const kickoff = new Date(match.kickoffUtc).getTime();
   const kickedOff = now.getTime() >= kickoff;
 
   const [homeStr, setHomeStr] = useState<string>("");
   const [awayStr, setAwayStr] = useState<string>("");
+  const [advance, setAdvance] = useState<AdvanceSide | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Prediction already made or result posted — parent renders the display, we render nothing here.
   if (prediction || result) return null;
 
   if (kickedOff) {
@@ -40,7 +31,6 @@ export default function PredictionBox({ match, userId, prediction, result, now, 
     );
   }
 
-  // Guest — prompt sign-in
   if (!userId) {
     return (
       <div className="mt-3 pt-3 border-t border-[var(--border)] text-center">
@@ -57,16 +47,24 @@ export default function PredictionBox({ match, userId, prediction, result, now, 
     );
   }
 
+  const hn = parseInt(homeStr, 10);
+  const an = parseInt(awayStr, 10);
+  const validScores = !isNaN(hn) && !isNaN(an) && hn >= 0 && an >= 0 && hn <= 20 && an <= 20;
+  const isDraw = validScores && hn === an;
+  const needsAdvance = isDraw && advance === null;
+
   const submit = async () => {
-    const hn = parseInt(homeStr, 10);
-    const an = parseInt(awayStr, 10);
-    if (isNaN(hn) || isNaN(an) || hn < 0 || an < 0 || hn > 20 || an > 20) {
+    if (!validScores) {
       setErr("أدخل رقمين صحيحين");
+      return;
+    }
+    if (isDraw && advance === null) {
+      setErr("اختر المتأهّل عند التعادل");
       return;
     }
     setBusy(true);
     setErr(null);
-    const res = await submitPrediction(userId, match.id, hn, an);
+    const res = await submitPrediction(userId, match.id, hn, an, isDraw ? advance : null);
     setBusy(false);
     if (res.error) setErr(res.error);
   };
@@ -74,7 +72,6 @@ export default function PredictionBox({ match, userId, prediction, result, now, 
   return (
     <div className="mt-3 pt-3 border-t border-[var(--border)]">
       <div className="text-[10px] text-[var(--muted-foreground)] font-mono uppercase text-center mb-2">توقعك</div>
-      {/* Matches card grid: col-1 = home (right in RTL), col-3 = away (left in RTL) */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
         <div className="flex justify-center">
           <input
@@ -106,9 +103,44 @@ export default function PredictionBox({ match, userId, prediction, result, now, 
           />
         </div>
       </div>
+
+      {isDraw && (
+        <div className="mt-3">
+          <div className="text-[10px] text-[var(--muted-foreground)] font-mono uppercase text-center mb-2">
+            من يتأهّل؟ (ركلات الترجيح)
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setAdvance("home")}
+              disabled={busy}
+              className={`py-2 rounded-lg text-xs font-bold border transition-colors ${
+                advance === "home"
+                  ? "bg-[var(--gold)] text-[var(--primary-foreground)] border-[var(--gold)]"
+                  : "bg-[var(--background)] text-[var(--foreground)] border-[var(--border)]"
+              }`}
+            >
+              <span className="me-1">{match.homeFlag}</span>{match.homeNameAr}
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdvance("away")}
+              disabled={busy}
+              className={`py-2 rounded-lg text-xs font-bold border transition-colors ${
+                advance === "away"
+                  ? "bg-[var(--gold)] text-[var(--primary-foreground)] border-[var(--gold)]"
+                  : "bg-[var(--background)] text-[var(--foreground)] border-[var(--border)]"
+              }`}
+            >
+              <span className="me-1">{match.awayFlag}</span>{match.awayNameAr}
+            </button>
+          </div>
+        </div>
+      )}
+
       <button
         onClick={submit}
-        disabled={busy}
+        disabled={busy || !validScores || needsAdvance}
         className="w-full mt-3 bg-[var(--gold)] text-[var(--primary-foreground)] font-bold px-4 py-2 rounded-lg text-sm disabled:opacity-40"
       >
         حفظ التوقع
