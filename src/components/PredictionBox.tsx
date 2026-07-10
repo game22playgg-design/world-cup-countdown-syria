@@ -72,7 +72,9 @@ export default function PredictionBox({ match, userId, prediction, result, now, 
 
   return (
     <div className="mt-3 pt-3 border-t border-[var(--border)]">
-      <div className="text-[10px] text-[var(--muted-foreground)] font-mono uppercase text-center mb-2">توقعك</div>
+      <div className="text-[10px] text-[var(--muted-foreground)] font-mono uppercase text-center mb-2">
+        {prediction ? "تعديل توقعك" : "توقعك"}
+      </div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
         <div className="flex justify-center">
           <input
