@@ -104,14 +104,18 @@ export async function submitPrediction(
   away: number,
   advancePick: AdvanceSide | null = null,
 ): Promise<{ error?: string }> {
-  const { error } = await supabase.from("predictions").insert({
-    user_id: userId,
-    match_id: matchId,
-    home_score: home,
-    away_score: away,
-    advance_pick: home === away ? advancePick : null,
-  });
-  if (error) return { error: error.message.includes("duplicate") ? "التوقع مُسجّل مسبقاً" : "تعذّر الحفظ" };
+  const { error } = await supabase.from("predictions").upsert(
+    {
+      user_id: userId,
+      match_id: matchId,
+      home_score: home,
+      away_score: away,
+      advance_pick: home === away ? advancePick : null,
+      points: null,
+    },
+    { onConflict: "user_id,match_id" },
+  );
+  if (error) return { error: "تعذّر الحفظ" };
   return {};
 }
 
