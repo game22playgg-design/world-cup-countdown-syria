@@ -297,7 +297,7 @@ function PredictionsModal({
 
                   {!canSeeScore && (
                     <div className="mt-2 text-[11px] text-center text-[var(--muted-foreground)] leading-relaxed">
-                      يمكنك رؤية التوقع بعد توقعك للمباراة
+                      تظهر التوقعات بعد انتهاء المباراة
                     </div>
                   )}
 
