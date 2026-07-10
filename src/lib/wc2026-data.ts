@@ -145,7 +145,7 @@ export const MATCHES: Match[] = [
     homeName: "Spain",   homeFlag: F("E","S"), homeNameAr: "إسبانيا",
     awayName: "Belgium", awayFlag: F("B","E"), awayNameAr: "بلجيكا",
     stage: "qf", city: "-", cityAr: "-", stadium: "-", stadiumAr: "-" },
-  { id: "qf-3", kickoffUtc: "2026-07-10T21:00:00Z",
+  { id: "qf-3", kickoffUtc: "2026-07-11T21:00:00Z",
     homeName: "Norway",  homeFlag: F("N","O"), homeNameAr: "النرويج",
     awayName: "England", awayFlag: F("G","B"), awayNameAr: "إنكلترا",
     stage: "qf", city: "-", cityAr: "-", stadium: "-", stadiumAr: "-" },
