@@ -5,10 +5,11 @@ import { MATCHES, type Match } from "./wc2026-data";
 export async function fetchUserPredictions(userId: string): Promise<Prediction[]> {
   const { data } = await supabase
     .from("predictions")
-    .select("match_id, home_score, away_score, points, locked_at")
+    .select("match_id, home_score, away_score, points, locked_at, advance_pick")
     .eq("user_id", userId);
   return (data ?? []) as Prediction[];
 }
+
 
 
 export type AdvanceSide = "home" | "away";
