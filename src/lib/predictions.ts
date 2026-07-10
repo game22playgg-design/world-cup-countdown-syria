@@ -70,7 +70,7 @@ export function useMyPredictions(userId: string | null) {
     if (!userId) return setPreds({});
     const { data } = await supabase
       .from("predictions")
-      .select("match_id, home_score, away_score, points, locked_at")
+      .select("match_id, home_score, away_score, points, locked_at, advance_pick")
       .eq("user_id", userId);
     const map: Record<string, Prediction> = {};
     (data ?? []).forEach((p) => (map[p.match_id] = p as Prediction));
