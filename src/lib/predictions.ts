@@ -11,19 +11,24 @@ export async function fetchUserPredictions(userId: string): Promise<Prediction[]
 }
 
 
+export type AdvanceSide = "home" | "away";
+
 export interface Prediction {
   match_id: string;
   home_score: number;
   away_score: number;
   points: number | null;
   locked_at: string;
+  advance_pick: AdvanceSide | null;
 }
 export interface MatchResult {
   match_id: string;
   home_score: number;
   away_score: number;
   highlights_url?: string | null;
+  advance_pick: AdvanceSide | null;
 }
+
 export interface LeaderboardRow {
   user_id: string;
   username: string;
