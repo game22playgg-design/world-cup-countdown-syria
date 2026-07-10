@@ -116,15 +116,22 @@ export async function submitPrediction(
 }
 
 
-export async function upsertMatchResult(matchId: string, home: number, away: number) {
+export async function upsertMatchResult(
+  matchId: string,
+  home: number,
+  away: number,
+  advancePick: AdvanceSide | null = null,
+) {
   const { error } = await supabase.from("match_results").upsert({
     match_id: matchId,
     home_score: home,
     away_score: away,
+    advance_pick: home === away ? advancePick : null,
     updated_at: new Date().toISOString(),
   });
   return { error: error?.message };
 }
+
 
 export async function setHighlightsUrl(matchId: string, url: string | null) {
   const { error } = await supabase
