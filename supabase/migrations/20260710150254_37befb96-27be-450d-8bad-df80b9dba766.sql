@@ -1,0 +1,1 @@
+CREATE POLICY predictions_update_own ON public.predictions FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);

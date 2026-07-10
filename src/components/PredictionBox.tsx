@@ -15,15 +15,16 @@ export default function PredictionBox({ match, userId, prediction, result, now, 
   const kickoff = new Date(match.kickoffUtc).getTime();
   const kickedOff = now.getTime() >= kickoff;
 
-  const [homeStr, setHomeStr] = useState<string>("");
-  const [awayStr, setAwayStr] = useState<string>("");
-  const [advance, setAdvance] = useState<AdvanceSide | null>(null);
+  const [homeStr, setHomeStr] = useState<string>(prediction ? String(prediction.home_score) : "");
+  const [awayStr, setAwayStr] = useState<string>(prediction ? String(prediction.away_score) : "");
+  const [advance, setAdvance] = useState<AdvanceSide | null>(prediction?.advance_pick ?? null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (prediction || result) return null;
+  if (result) return null;
 
   if (kickedOff) {
+    if (prediction) return null;
     return (
       <div className="mt-3 pt-3 border-t border-[var(--border)] text-center text-xs text-[var(--muted-foreground)]">
         انتهى وقت التوقع
@@ -71,7 +72,9 @@ export default function PredictionBox({ match, userId, prediction, result, now, 
 
   return (
     <div className="mt-3 pt-3 border-t border-[var(--border)]">
-      <div className="text-[10px] text-[var(--muted-foreground)] font-mono uppercase text-center mb-2">توقعك</div>
+      <div className="text-[10px] text-[var(--muted-foreground)] font-mono uppercase text-center mb-2">
+        {prediction ? "تعديل توقعك" : "توقعك"}
+      </div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
         <div className="flex justify-center">
           <input
@@ -143,7 +146,7 @@ export default function PredictionBox({ match, userId, prediction, result, now, 
         disabled={busy || !validScores || needsAdvance}
         className="w-full mt-3 bg-[var(--gold)] text-[var(--primary-foreground)] font-bold px-4 py-2 rounded-lg text-sm disabled:opacity-40"
       >
-        حفظ التوقع
+        {prediction ? "تحديث التوقع" : "حفظ التوقع"}
       </button>
       {err && <div className="text-[var(--stadium-red)] text-xs text-center mt-2">{err}</div>}
     </div>
