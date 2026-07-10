@@ -148,13 +148,11 @@ async function processPointsNotifications() {
   const finishedIds = (results ?? []).map((r) => r.match_id as string);
   if (finishedIds.length === 0) return { pointsSent: 0 };
 
-  // All predictions that earned points on those matches
+  // All predictions on finished matches (any points, including 0/null)
   const { data: preds } = await supa
     .from("predictions")
     .select("user_id, match_id, points")
-    .in("match_id", finishedIds)
-    .not("points", "is", null)
-    .gte("points", 1);
+    .in("match_id", finishedIds);
 
   if (!preds || preds.length === 0) return { pointsSent: 0 };
 
@@ -167,11 +165,15 @@ async function processPointsNotifications() {
 
   let pointsSent = 0;
   for (const p of pending) {
-    const points = p.points as number;
+    const points = (p.points as number | null) ?? 0;
     const body =
       points === 3
-        ? "🔥🎯 توقعت النتيجة بالمظبوط! حصلت على 3 نقاط"
-        : "🔥✅ توقعت الفائز صح! حصلت على نقطة";
+        ? "🔥🎯 توقعت النتيجة بالمظبوط! حصلت على 3 نقاط — شاهد توقعات الآخرين الآن"
+        : points === 2
+        ? "🔥 توقعت التعادل بالمظبوط! حصلت على نقطتين — شاهد توقعات الآخرين الآن"
+        : points === 1
+        ? "🔥✅ توقعت الفائز صح! حصلت على نقطة — شاهد توقعات الآخرين الآن"
+        : "انتهت المباراة! يمكنك الآن رؤية توقعات باقي اللاعبين";
 
     const r = await sendToUsers([p.user_id as string], {
       title: "موعد",
