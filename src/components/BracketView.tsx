@@ -103,12 +103,30 @@ export default function BracketView(_: { isAdmin: boolean }) {
       }
     }
 
-    // SF & Final: derive from previous round winners.
+    const loserOf = (nodeId: string): TeamRef => {
+      const match = Object.values(matchById).find((m) => m.id === nodeId);
+      if (match) {
+        const r = results[nodeId];
+        if (!r) return null;
+        if (r.home_score > r.away_score) return teamFromMatch("away", match);
+        if (r.away_score > r.home_score) return teamFromMatch("home", match);
+        return null;
+      }
+      return null;
+    };
+
+    // SF: derive from QF winners.
     for (const node of BRACKET[2].nodes) {
       if (!node.from) continue;
       teams[node.id] = { home: winnerOf(node.from[0]), away: winnerOf(node.from[1]) };
     }
+    // Third place: SF losers.
     for (const node of BRACKET[3].nodes) {
+      if (!node.from) continue;
+      teams[node.id] = { home: loserOf(node.from[0]), away: loserOf(node.from[1]) };
+    }
+    // Final: SF winners.
+    for (const node of BRACKET[4].nodes) {
       if (!node.from) continue;
       teams[node.id] = { home: winnerOf(node.from[0]), away: winnerOf(node.from[1]) };
     }
