@@ -36,9 +36,14 @@ const BRACKET: { key: string; label: string; nodes: Node[] }[] = [
     key: "sf",
     label: "نصف النهائي",
     nodes: [
-      { id: "sf-1", from: ["qf-1", "qf-3"] },
-      { id: "sf-2", from: ["qf-2", "qf-4"] },
+      { id: "sf-1", from: ["qf-1", "qf-2"] },
+      { id: "sf-2", from: ["qf-3", "qf-4"] },
     ],
+  },
+  {
+    key: "third",
+    label: "مباراة تحديد المركز الثالث",
+    nodes: [{ id: "third-1", from: ["sf-1", "sf-2"] }],
   },
   {
     key: "final",
