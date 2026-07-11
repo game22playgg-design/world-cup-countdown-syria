@@ -135,7 +135,7 @@ export default function BracketView(_: { isAdmin: boolean }) {
   }, [matchById, results]);
 
   const champion: TeamRef = useMemo(() => {
-    const finalNode = BRACKET[3].nodes[0];
+    const finalNode = BRACKET[4].nodes[0];
     const finalMatchId = finalNode.matchId;
     const t = nodeTeams[finalNode.id];
     if (!t?.home || !t?.away) return null;
