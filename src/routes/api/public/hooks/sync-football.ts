@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 import { MATCHES } from "@/lib/wc2026-data";
+
+type DB = SupabaseClient<Database>;
 
 // ============================================================
 // Team name normalization: API-Football sometimes uses different
