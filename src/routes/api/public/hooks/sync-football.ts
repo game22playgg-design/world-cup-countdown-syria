@@ -113,7 +113,7 @@ interface SyncResult {
 }
 
 async function syncFixtures(
-  supabase: ReturnType<typeof createClient>,
+  supabase: DB,
   apiKey: string,
 ): Promise<Pick<SyncResult, "fixtures_fetched" | "results_upserted" | "unmatched" | "errors">> {
   const errors: string[] = [];
@@ -193,7 +193,7 @@ async function syncFixtures(
 }
 
 async function syncTopScorers(
-  supabase: ReturnType<typeof createClient>,
+  supabase: DB,
   apiKey: string,
 ): Promise<{ scorers_upserted: number; errors: string[] }> {
   const errors: string[] = [];
@@ -270,7 +270,7 @@ export const Route = createFileRoute("/api/public/hooks/sync-football")({
           return new Response("Unauthorized", { status: 401 });
         }
 
-        const supabase = createClient(url, serviceKey, {
+        const supabase = createClient<Database>(url, serviceKey, {
           auth: { persistSession: false, autoRefreshToken: false },
         });
 
