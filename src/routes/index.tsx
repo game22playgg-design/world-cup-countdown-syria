@@ -34,7 +34,7 @@ const STAGE_LABEL: Record<Match["stage"], string> = {
   r16: "ثمن النهائي",
   qf: "ربع النهائي",
   sf: "نصف النهائي",
-  final: "تحديد المركز الثالث والنهائي",
+  final: "النهائي",
 };
 
 const ROUNDS: { key: Match["stage"]; label: string; short: string }[] = [
