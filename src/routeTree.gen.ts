@@ -10,44 +10,33 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiPublicHooksSyncFootballRouteImport } from './routes/api/public/hooks/sync-football'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicHooksSyncFootballRoute =
-  ApiPublicHooksSyncFootballRouteImport.update({
-    id: '/api/public/hooks/sync-football',
-    path: '/api/public/hooks/sync-football',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/api/public/hooks/sync-football': typeof ApiPublicHooksSyncFootballRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/api/public/hooks/sync-football': typeof ApiPublicHooksSyncFootballRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/api/public/hooks/sync-football': typeof ApiPublicHooksSyncFootballRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/public/hooks/sync-football'
+  fullPaths: '/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/public/hooks/sync-football'
-  id: '__root__' | '/' | '/api/public/hooks/sync-football'
+  to: '/'
+  id: '__root__' | '/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ApiPublicHooksSyncFootballRoute: typeof ApiPublicHooksSyncFootballRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -59,19 +48,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/sync-football': {
-      id: '/api/public/hooks/sync-football'
-      path: '/api/public/hooks/sync-football'
-      fullPath: '/api/public/hooks/sync-football'
-      preLoaderRoute: typeof ApiPublicHooksSyncFootballRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ApiPublicHooksSyncFootballRoute: ApiPublicHooksSyncFootballRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

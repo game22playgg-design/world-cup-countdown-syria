@@ -196,7 +196,6 @@ export type Database = {
           goals: number
           id: string
           name_ar: string
-          name_en: string | null
           photo_url: string | null
           updated_at: string
         }
@@ -207,7 +206,6 @@ export type Database = {
           goals?: number
           id?: string
           name_ar: string
-          name_en?: string | null
           photo_url?: string | null
           updated_at?: string
         }
@@ -218,7 +216,6 @@ export type Database = {
           goals?: number
           id?: string
           name_ar?: string
-          name_en?: string | null
           photo_url?: string | null
           updated_at?: string
         }
