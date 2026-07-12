@@ -6,20 +6,21 @@ import { MATCHES } from "@/lib/wc2026-data";
 type DB = SupabaseClient<Database>;
 
 // ============================================================
-// Team name normalization: API-Football sometimes uses different
-// English spellings than ours. Map both sides to a canonical key.
+// Team name normalization: Football-Data.org sometimes uses
+// different English spellings than ours. Map both sides to a
+// canonical key.
 // ============================================================
 const TEAM_ALIASES: Record<string, string> = {
   "usa": "united states",
   "united states of america": "united states",
   "korea republic": "south korea",
   "republic of korea": "south korea",
-  "iran": "iran",
   "ir iran": "iran",
   "côte d'ivoire": "ivory coast",
   "cote d'ivoire": "ivory coast",
   "czechia": "czech republic",
   "türkiye": "turkey",
+  "turkiye": "turkey",
   "bosnia & herzegovina": "bosnia and herzegovina",
   "cabo verde": "cape verde",
   "dr congo": "dr congo",
@@ -81,25 +82,24 @@ const COUNTRIES_AR: Record<string, { ar: string; flag: string }> = {
   "nigeria": { ar: "نيجيريا", flag: F("N", "G") },
   "cameroon": { ar: "الكاميرون", flag: F("C", "M") },
   "tunisia": { ar: "تونس", flag: F("T", "N") },
+  "iran": { ar: "إيران", flag: F("I", "R") },
 };
 
 // ============================================================
-// API-Football (RapidAPI) — World Cup league id = 1
+// Football-Data.org — Free tier
+// Competition code for FIFA World Cup = "WC"
+// Auth via X-Auth-Token header. 10 requests/min free.
 // ============================================================
-const API_BASE = "https://api-football-v1.p.rapidapi.com/v3";
-const LEAGUE_ID = 1;
-const SEASON = 2026;
+const API_BASE = "https://api.football-data.org/v4";
+const COMPETITION = "WC";
 
-async function apiGet(path: string, apiKey: string) {
+async function apiGet(path: string, token: string) {
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: {
-      "X-RapidAPI-Key": apiKey,
-      "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com",
-    },
+    headers: { "X-Auth-Token": token },
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`API-Football ${path} failed [${res.status}]: ${body}`);
+    throw new Error(`football-data ${path} [${res.status}]: ${body}`);
   }
   return res.json();
 }
@@ -114,16 +114,15 @@ interface SyncResult {
 
 async function syncFixtures(
   supabase: DB,
-  apiKey: string,
+  token: string,
 ): Promise<Pick<SyncResult, "fixtures_fetched" | "results_upserted" | "unmatched" | "errors">> {
   const errors: string[] = [];
   const unmatched: string[] = [];
   let upserted = 0;
 
-  const data = await apiGet(`/fixtures?league=${LEAGUE_ID}&season=${SEASON}`, apiKey);
-  const fixtures: any[] = data?.response ?? [];
+  const data = await apiGet(`/competitions/${COMPETITION}/matches?status=FINISHED`, token);
+  const fixtures: any[] = data?.matches ?? [];
 
-  // Build lookup: pair key -> our match id (with team-order preservation).
   const matchByPair = new Map<string, { id: string; homeNorm: string }>();
   for (const m of MATCHES) {
     if (m.homeName === "TBD" || m.awayName === "TBD") continue;
@@ -133,18 +132,20 @@ async function syncFixtures(
     });
   }
 
-  const FINISHED = new Set(["FT", "AET", "PEN"]);
-
   for (const f of fixtures) {
-    const status: string = f?.fixture?.status?.short ?? "";
-    if (!FINISHED.has(status)) continue;
-
-    const homeApi: string = f?.teams?.home?.name ?? "";
-    const awayApi: string = f?.teams?.away?.name ?? "";
+    const homeApi: string = f?.homeTeam?.name ?? f?.homeTeam?.shortName ?? "";
+    const awayApi: string = f?.awayTeam?.name ?? f?.awayTeam?.shortName ?? "";
     if (!homeApi || !awayApi) continue;
 
-    const goalsHome: number | null = f?.goals?.home ?? null;
-    const goalsAway: number | null = f?.goals?.away ?? null;
+    // Full-time score (includes ET goals but excludes penalties per FD spec)
+    const ft = f?.score?.fullTime ?? {};
+    const et = f?.score?.extraTime ?? {};
+    const pens = f?.score?.penalties ?? {};
+
+    const goalsHome: number | null =
+      et.home != null ? et.home : ft.home != null ? ft.home : null;
+    const goalsAway: number | null =
+      et.away != null ? et.away : ft.away != null ? ft.away : null;
     if (goalsHome == null || goalsAway == null) continue;
 
     const key = pairKey(homeApi, awayApi);
@@ -154,23 +155,19 @@ async function syncFixtures(
       continue;
     }
 
-    // Align to our home/away ordering.
     const apiHomeIsOurHome = normTeam(homeApi) === our.homeNorm;
     const home = apiHomeIsOurHome ? goalsHome : goalsAway;
     const away = apiHomeIsOurHome ? goalsAway : goalsHome;
 
-    // Advance pick: penalty winner if draw, else null.
+    // Advance pick from penalty winner (only meaningful when regulation+ET draw)
     let advance_pick: "home" | "away" | null = null;
     if (home === away) {
-      const winnerId = f?.teams?.home?.winner
-        ? f?.teams?.home?.id
-        : f?.teams?.away?.winner
-        ? f?.teams?.away?.id
-        : null;
-      if (winnerId != null) {
-        const homeId = f?.teams?.home?.id;
-        const apiWinnerIsHome = winnerId === homeId;
-        // Convert to our ordering.
+      const winnerSide: string | null = f?.score?.winner ?? null; // "HOME_TEAM" | "AWAY_TEAM" | "DRAW"
+      if (winnerSide === "HOME_TEAM" || winnerSide === "AWAY_TEAM") {
+        const apiWinnerIsHome = winnerSide === "HOME_TEAM";
+        advance_pick = apiWinnerIsHome === apiHomeIsOurHome ? "home" : "away";
+      } else if (pens.home != null && pens.away != null && pens.home !== pens.away) {
+        const apiWinnerIsHome = pens.home > pens.away;
         advance_pick = apiWinnerIsHome === apiHomeIsOurHome ? "home" : "away";
       }
     }
@@ -194,17 +191,15 @@ async function syncFixtures(
 
 async function syncTopScorers(
   supabase: DB,
-  apiKey: string,
+  token: string,
 ): Promise<{ scorers_upserted: number; errors: string[] }> {
   const errors: string[] = [];
-  const data = await apiGet(`/players/topscorers?league=${LEAGUE_ID}&season=${SEASON}`, apiKey);
-  const list: any[] = data?.response ?? [];
+  const data = await apiGet(`/competitions/${COMPETITION}/scorers?limit=20`, token);
+  const list: any[] = data?.scorers ?? [];
 
   let upserted = 0;
-  const top = list.slice(0, 20);
 
-  // Remove auto-managed rows that dropped out of the top list.
-  const currentNames = top.map((r) => r?.player?.name).filter(Boolean);
+  const currentNames = list.map((r) => r?.player?.name).filter(Boolean);
   if (currentNames.length > 0) {
     const { error: delErr } = await supabase
       .from("top_scorers")
@@ -214,11 +209,10 @@ async function syncTopScorers(
     if (delErr) errors.push(`cleanup: ${delErr.message}`);
   }
 
-  for (const row of top) {
+  for (const row of list) {
     const nameEn: string = row?.player?.name ?? "";
-    const photo: string | null = row?.player?.photo ?? null;
-    const nationality: string = (row?.player?.nationality ?? "").toString();
-    const goals: number = row?.statistics?.[0]?.goals?.total ?? 0;
+    const nationality: string = (row?.player?.nationality ?? row?.team?.name ?? "").toString();
+    const goals: number = row?.goals ?? 0;
     if (!nameEn || !goals) continue;
 
     const natKey = normTeam(nationality);
@@ -227,11 +221,11 @@ async function syncTopScorers(
     const { error } = await supabase.from("top_scorers").upsert(
       {
         name_en: nameEn,
-        name_ar: nameEn, // fallback; admin can override manually
+        name_ar: nameEn,
         country_ar: arInfo?.ar ?? nationality,
         country_flag: arInfo?.flag ?? null,
         goals,
-        photo_url: photo,
+        photo_url: null,
       },
       { onConflict: "name_en" },
     );
@@ -246,11 +240,10 @@ export const Route = createFileRoute("/api/public/hooks/sync-football")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        // Auth: require the Supabase anon apikey header (pg_cron sets it).
         const url = process.env.SUPABASE_URL;
         const anonKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY;
         const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-        const rapidKey = process.env.RAPIDAPI_KEY;
+        const fdToken = process.env.FOOTBALL_DATA_TOKEN;
 
         if (!url || !anonKey || !serviceKey) {
           return new Response(JSON.stringify({ error: "Supabase env missing" }), {
@@ -258,11 +251,11 @@ export const Route = createFileRoute("/api/public/hooks/sync-football")({
             headers: { "content-type": "application/json" },
           });
         }
-        if (!rapidKey) {
-          return new Response(JSON.stringify({ error: "RAPIDAPI_KEY not configured" }), {
-            status: 500,
-            headers: { "content-type": "application/json" },
-          });
+        if (!fdToken) {
+          return new Response(
+            JSON.stringify({ error: "FOOTBALL_DATA_TOKEN not configured" }),
+            { status: 500, headers: { "content-type": "application/json" } },
+          );
         }
 
         const caller = request.headers.get("apikey");
@@ -283,7 +276,7 @@ export const Route = createFileRoute("/api/public/hooks/sync-football")({
         };
 
         try {
-          const fx = await syncFixtures(supabase, rapidKey);
+          const fx = await syncFixtures(supabase, fdToken);
           result.fixtures_fetched = fx.fixtures_fetched;
           result.results_upserted = fx.results_upserted;
           result.unmatched = fx.unmatched;
@@ -293,7 +286,7 @@ export const Route = createFileRoute("/api/public/hooks/sync-football")({
         }
 
         try {
-          const sc = await syncTopScorers(supabase, rapidKey);
+          const sc = await syncTopScorers(supabase, fdToken);
           result.scorers_upserted = sc.scorers_upserted;
           result.errors.push(...sc.errors);
         } catch (e: any) {
@@ -302,10 +295,7 @@ export const Route = createFileRoute("/api/public/hooks/sync-football")({
 
         return new Response(
           JSON.stringify({ ok: result.errors.length === 0, ...result }, null, 2),
-          {
-            status: 200,
-            headers: { "content-type": "application/json" },
-          },
+          { status: 200, headers: { "content-type": "application/json" } },
         );
       },
     },
