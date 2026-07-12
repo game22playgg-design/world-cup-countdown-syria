@@ -154,10 +154,31 @@ export const MATCHES: Match[] = [
     awayName: "Switzerland", awayFlag: F("C","H"), awayNameAr: "سويسرا",
     stage: "qf", city: "-", cityAr: "-", stadium: "-", stadiumAr: "-" },
 
+  // ============ Semi-finals (July 14 – 15, 2026) ============
+  { id: "sf-1", kickoffUtc: "2026-07-14T19:00:00Z",
+    homeName: "France", homeFlag: F("F","R"), homeNameAr: "فرنسا",
+    awayName: "Spain",  awayFlag: F("E","S"), awayNameAr: "إسبانيا",
+    stage: "sf", city: "-", cityAr: "-", stadium: "-", stadiumAr: "-" },
+  { id: "sf-2", kickoffUtc: "2026-07-15T19:00:00Z",
+    homeName: "England",   homeFlag: F("G","B"), homeNameAr: "إنكلترا",
+    awayName: "Argentina", awayFlag: F("A","R"), awayNameAr: "الأرجنتين",
+    stage: "sf", city: "-", cityAr: "-", stadium: "-", stadiumAr: "-" },
+
+  // ============ Third place & Final (July 19, 2026) ============
+  { id: "third-1", kickoffUtc: "2026-07-18T21:00:00Z",
+    homeName: "TBD", homeFlag: "🏳️", homeNameAr: "خاسر نصف النهائي 1",
+    awayName: "TBD", awayFlag: "🏳️", awayNameAr: "خاسر نصف النهائي 2",
+    stage: "final", city: "-", cityAr: "-", stadium: "-", stadiumAr: "-" },
+  { id: "final-1", kickoffUtc: "2026-07-19T19:00:00Z",
+    homeName: "TBD", homeFlag: "🏳️", homeNameAr: "فائز نصف النهائي 1",
+    awayName: "TBD", awayFlag: "🏳️", awayNameAr: "فائز نصف النهائي 2",
+    stage: "final", city: "-", cityAr: "-", stadium: "-", stadiumAr: "-" },
+
 ];
 
-export const CURRENT_ROUND_AR = "ربع النهائي";
-export const CURRENT_ROUND_DATES_AR = "9 – 12 تموز 2026";
+export const CURRENT_ROUND_AR = "نصف النهائي";
+export const CURRENT_ROUND_DATES_AR = "14 – 19 تموز 2026";
+
 
 
 
