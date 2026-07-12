@@ -293,7 +293,7 @@ function MatchCard({
     <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4">
       <div className="flex items-center justify-between mb-3">
         <StatusBadge status={status} hasResult={!!result} />
-        <span className="text-[11px] font-bold text-[var(--gold)]">{STAGE_LABEL[match.stage]}</span>
+        <span className="text-[11px] font-bold text-[var(--gold)]">{match.id.startsWith('third') ? "تحديد المركز الثالث" : STAGE_LABEL[match.stage]}</span>
       </div>
 
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
