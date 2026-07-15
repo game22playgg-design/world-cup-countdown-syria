@@ -171,10 +171,21 @@ export function useLeaderboard() {
     MATCHES.forEach((m) => (stageByMatch[m.id] = m.stage));
 
     const load = async () => {
-      const [{ data: profiles }, { data: preds }] = await Promise.all([
+      const [{ data: profiles }, { data: preds }, { data: results }] = await Promise.all([
         supabase.from("profiles").select("id, username, is_admin, bonus_points"),
         supabase.from("predictions").select("user_id, match_id, points"),
+        supabase.from("match_results").select("match_id"),
       ]);
+
+      // Determine "last 3 matches": among matches that have results,
+      // pick the 3 with the most recent kickoff times.
+      const finishedIds = new Set((results ?? []).map((r: any) => r.match_id as string));
+      const lastThreeIds = new Set(
+        MATCHES.filter((m) => finishedIds.has(m.id))
+          .sort((a, b) => +new Date(b.kickoffUtc) - +new Date(a.kickoffUtc))
+          .slice(0, 3)
+          .map((m) => m.id),
+      );
 
       const byUser: Record<string, LeaderboardRow> = {};
       (profiles ?? []).forEach((p: any) => {
@@ -187,6 +198,8 @@ export function useLeaderboard() {
           exact_count: 0,
           finished_count: 0,
           per_round: {},
+          hot_points: 0,
+          hot_matches: [],
         };
       });
       (preds ?? []).forEach((p) => {
@@ -198,6 +211,10 @@ export function useLeaderboard() {
         row.total_points += p.points;
         row.finished_count += 1;
         if (p.points === 3) row.exact_count += 1;
+        if (lastThreeIds.has(p.match_id)) {
+          row.hot_points += p.points;
+          row.hot_matches.push({ match_id: p.match_id, points: p.points });
+        }
       });
 
       const list = Object.values(byUser).sort((a, b) => {
@@ -206,6 +223,7 @@ export function useLeaderboard() {
       });
       setRows(list);
     };
+
 
     load();
     const ch = supabase
