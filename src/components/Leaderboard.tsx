@@ -120,9 +120,23 @@ export default function Leaderboard({ currentUserId }: { currentUserId: string |
                 <tr key={r.user_id} className={`border-b border-[var(--border)] last:border-0 ${isMe ? "bg-[var(--gold)]/10" : ""}`}>
                   <td className={`p-2 font-mono font-bold text-[var(--gold)] sticky right-0 z-10 ${rowBg}`}>{r.rank}</td>
                   <td className={`p-2 font-bold sticky right-8 z-10 ${rowBg} whitespace-nowrap`}>
-                    {r.username}
+                    <span className="align-middle">{r.username}</span>
                     {isMe && <span className="text-[9px] text-[var(--gold)] mr-1">(أنت)</span>}
+                    {r.hot_points > 7 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setHotUser({ username: r.username, hot_points: r.hot_points, hot_matches: r.hot_matches });
+                        }}
+                        title="لماذا هذا التاغ؟"
+                        className="fire-tag ml-1 mr-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider align-middle"
+                      >
+                        <span className="fire-emoji text-[11px] leading-none">🔥</span>
+                        <span>مُشتعل</span>
+                      </button>
+                    )}
                   </td>
+
                   {stages.map((s) => (
                     <td
                       key={s}
