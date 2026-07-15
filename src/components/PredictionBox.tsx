@@ -70,8 +70,29 @@ export default function PredictionBox({ match, userId, prediction, result, now, 
     if (res.error) setErr(res.error);
   };
 
+  const isBigMatch = match.id === "final-1" || match.id === "third-1";
+
   return (
     <div className="mt-3 pt-3 border-t border-[var(--border)]">
+      {isBigMatch && (
+        <div className="mb-3 rounded-xl border border-[var(--gold)]/50 bg-gradient-to-br from-[var(--gold-soft)] to-transparent p-3 text-center animate-fade-in">
+          <div className="text-lg mb-1">🏆🔥</div>
+          <div className="text-[11px] font-extrabold text-[var(--gold)] leading-relaxed">
+            {match.id === "final-1" ? "مباراة النهائي — نقاط مضاعفة!" : "مباراة تحديد المركز الثالث — نقاط مضاعفة!"}
+          </div>
+          <div className="mt-1.5 flex justify-center gap-2 text-[10px] font-bold">
+            <span className="px-2 py-0.5 rounded-full bg-[var(--gold)] text-[var(--primary-foreground)]">
+              8 نقاط للنتيجة الصحيحة
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-[var(--stadium-red)]/20 text-[var(--stadium-red)] border border-[var(--stadium-red)]/40">
+              5 نقاط للفائز
+            </span>
+          </div>
+          <div className="mt-1.5 text-[10px] text-[var(--muted-foreground)]">
+            فرصتك الأخيرة لتصعد نحو القمة ⚡
+          </div>
+        </div>
+      )}
       <div className="text-[10px] text-[var(--muted-foreground)] font-mono uppercase text-center mb-2">
         {prediction ? "تعديل توقعك" : "توقعك"}
       </div>
