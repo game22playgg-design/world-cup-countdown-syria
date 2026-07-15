@@ -11,6 +11,7 @@ import { useMatchResults, useMyPredictions } from "@/lib/predictions";
 import { enablePushNotifications, pushPermissionState, pushSupported } from "@/lib/push";
 import BracketView from "@/components/BracketView";
 import ScorersView from "@/components/ScorersView";
+import CelebrationModal from "@/components/CelebrationModal";
 
 export const Route = createFileRoute("/")({
   head: () => ({
