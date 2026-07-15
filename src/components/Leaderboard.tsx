@@ -176,6 +176,9 @@ export default function Leaderboard({ currentUserId }: { currentUserId: string |
           onClose={() => setOpenUser(null)}
         />
       )}
+
+      {hotUser && <HotTagModal info={hotUser} onClose={() => setHotUser(null)} />}
+
     </div>
   );
 }
