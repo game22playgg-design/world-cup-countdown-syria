@@ -20,7 +20,9 @@ function matchFinished(iso: string, now: Date) {
 export default function Leaderboard({ currentUserId }: { currentUserId: string | null }) {
   const rows = useLeaderboard();
   const [openUser, setOpenUser] = useState<{ id: string; username: string } | null>(null);
+  const [hotUser, setHotUser] = useState<{ username: string; hot_points: number; hot_matches: { match_id: string; points: number }[] } | null>(null);
   const [sortBy, setSortBy] = useState<"total" | Match["stage"]>("total");
+
 
   const stages = useMemo(() => {
     const set = new Set<Match["stage"]>();
