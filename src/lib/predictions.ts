@@ -30,6 +30,11 @@ export interface MatchResult {
   advance_pick: AdvanceSide | null;
 }
 
+export interface HotMatchBreakdown {
+  match_id: string;
+  points: number;
+}
+
 export interface LeaderboardRow {
   user_id: string;
   username: string;
@@ -37,6 +42,8 @@ export interface LeaderboardRow {
   exact_count: number;
   finished_count: number;
   per_round: Record<string, number>;
+  hot_points: number;
+  hot_matches: HotMatchBreakdown[];
 }
 
 export function useMatchResults() {
