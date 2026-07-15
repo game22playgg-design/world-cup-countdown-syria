@@ -501,6 +501,16 @@ function Index() {
       {showGate && <UsernameGate onDone={() => setShowGate(false)} />}
       {showAdmin && profile?.is_admin && <AdminPanel onClose={() => setShowAdmin(false)} />}
 
+      {profile && predictions["sf-2"]?.points === 5 && (
+        <CelebrationModal
+          storageKey={`moaid_celebrate_sf2_${profile.id}`}
+          emoji="🎯🔥"
+          title="توقّعتها بالمظبوط!"
+          message={"إنكلترا × الأرجنتين — نتيجة دقيقة كأنك في المدرجات! 🏟️\nكنت من القلة النادرة التي أصابت الرقمين معاً.\nمبروك عليك الـ 5 نقاط، والأهم: عين المحترفين! 👁️⚽"}
+        />
+      )}
+
+
       {showPushPrompt && profile && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 w-[min(92vw,420px)] bg-[var(--card)] border border-[var(--gold)]/40 rounded-2xl shadow-2xl p-4">
           <div className="flex items-start gap-3">
