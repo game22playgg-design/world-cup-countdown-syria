@@ -166,12 +166,12 @@ export const MATCHES: Match[] = [
 
   // ============ Third place & Final (July 19, 2026) ============
   { id: "third-1", kickoffUtc: "2026-07-18T21:00:00Z",
-    homeName: "TBD", homeFlag: "🏳️", homeNameAr: "خاسر نصف النهائي 1",
-    awayName: "TBD", awayFlag: "🏳️", awayNameAr: "خاسر نصف النهائي 2",
+    homeName: "France",  homeFlag: F("F","R"), homeNameAr: "فرنسا",
+    awayName: "England", awayFlag: F("G","B"), awayNameAr: "إنكلترا",
     stage: "final", city: "-", cityAr: "-", stadium: "-", stadiumAr: "-" },
   { id: "final-1", kickoffUtc: "2026-07-19T19:00:00Z",
-    homeName: "TBD", homeFlag: "🏳️", homeNameAr: "فائز نصف النهائي 1",
-    awayName: "TBD", awayFlag: "🏳️", awayNameAr: "فائز نصف النهائي 2",
+    homeName: "Spain",     homeFlag: F("E","S"), homeNameAr: "إسبانيا",
+    awayName: "Argentina", awayFlag: F("A","R"), awayNameAr: "الأرجنتين",
     stage: "final", city: "-", cityAr: "-", stadium: "-", stadiumAr: "-" },
 
 ];
