@@ -20,7 +20,9 @@ function matchFinished(iso: string, now: Date) {
 export default function Leaderboard({ currentUserId }: { currentUserId: string | null }) {
   const rows = useLeaderboard();
   const [openUser, setOpenUser] = useState<{ id: string; username: string } | null>(null);
+  const [hotUser, setHotUser] = useState<{ username: string; hot_points: number; hot_matches: { match_id: string; points: number }[] } | null>(null);
   const [sortBy, setSortBy] = useState<"total" | Match["stage"]>("total");
+
 
   const stages = useMemo(() => {
     const set = new Set<Match["stage"]>();
@@ -118,9 +120,23 @@ export default function Leaderboard({ currentUserId }: { currentUserId: string |
                 <tr key={r.user_id} className={`border-b border-[var(--border)] last:border-0 ${isMe ? "bg-[var(--gold)]/10" : ""}`}>
                   <td className={`p-2 font-mono font-bold text-[var(--gold)] sticky right-0 z-10 ${rowBg}`}>{r.rank}</td>
                   <td className={`p-2 font-bold sticky right-8 z-10 ${rowBg} whitespace-nowrap`}>
-                    {r.username}
+                    <span className="align-middle">{r.username}</span>
                     {isMe && <span className="text-[9px] text-[var(--gold)] mr-1">(أنت)</span>}
+                    {r.hot_points > 7 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setHotUser({ username: r.username, hot_points: r.hot_points, hot_matches: r.hot_matches });
+                        }}
+                        title="لماذا هذا التاغ؟"
+                        className="fire-tag ml-1 mr-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider align-middle"
+                      >
+                        <span className="fire-emoji text-[11px] leading-none">🔥</span>
+                        <span>مُشتعل</span>
+                      </button>
+                    )}
                   </td>
+
                   {stages.map((s) => (
                     <td
                       key={s}
@@ -160,6 +176,9 @@ export default function Leaderboard({ currentUserId }: { currentUserId: string |
           onClose={() => setOpenUser(null)}
         />
       )}
+
+      {hotUser && <HotTagModal info={hotUser} onClose={() => setHotUser(null)} />}
+
     </div>
   );
 }
@@ -320,3 +339,83 @@ function PredictionsModal({
     </div>
   );
 }
+
+function HotTagModal({
+  info,
+  onClose,
+}: {
+  info: { username: string; hot_points: number; hot_matches: { match_id: string; points: number }[] };
+  onClose: () => void;
+}) {
+  const matchById = useMemo(() => {
+    const m: Record<string, Match> = {};
+    MATCHES.forEach((x) => (m[x.id] = x));
+    return m;
+  }, []);
+
+  // Order by kickoff descending, only the ones that were in "last 3"
+  const rows = info.hot_matches
+    .map((h) => ({ ...h, match: matchById[h.match_id] }))
+    .filter((r) => r.match)
+    .sort((a, b) => +new Date(b.match.kickoffUtc) - +new Date(a.match.kickoffUtc));
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm grid place-items-center px-3 py-6"
+      onClick={onClose}
+    >
+      <div
+        dir="rtl"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-[420px] bg-[var(--card)] border border-[var(--gold)]/40 rounded-2xl shadow-2xl overflow-hidden"
+        style={{ boxShadow: "0 0 30px rgba(230,57,70,0.35), 0 0 60px rgba(255,140,0,0.25)" }}
+      >
+        <div className="relative px-4 py-4 border-b border-[var(--border)] text-center overflow-hidden"
+             style={{ background: "linear-gradient(135deg, #2a0a0f 0%, #4a1e0a 50%, #2a0a0f 100%)" }}>
+          <div className="text-4xl mb-1"><span className="fire-emoji inline-block">🔥</span></div>
+          <div className="text-[10px] font-mono uppercase tracking-[0.3em] text-[var(--gold)]">Hot Streak</div>
+          <div className="text-lg font-black mt-1 text-white">لاعب مُشتعل</div>
+          <div className="text-xs text-[var(--muted-foreground)] mt-1 font-bold">
+            {info.username}
+          </div>
+        </div>
+
+        <div className="p-4 space-y-3">
+          <p className="text-xs leading-relaxed text-center text-[var(--foreground)]">
+            حصل على <span className="text-[var(--gold)] font-black">{info.hot_points}</span> نقطة
+            في آخر <span className="font-black">3 مباريات</span>
+            <span className="block mt-1 text-[var(--muted-foreground)]">— أكثر من 7 نقاط = تاغ الاشتعال 🔥</span>
+          </p>
+
+          <div className="space-y-1.5">
+            {rows.map((r) => (
+              <div
+                key={r.match_id}
+                className="flex items-center justify-between gap-2 bg-[var(--background)] border border-[var(--border)] rounded-lg px-3 py-2"
+              >
+                <div className="flex items-center gap-1.5 text-xs font-bold min-w-0">
+                  <span className="text-base shrink-0">{r.match.homeFlag}</span>
+                  <span className="truncate">{r.match.homeNameAr}</span>
+                  <span className="text-[var(--muted-foreground)] mx-1">×</span>
+                  <span className="truncate">{r.match.awayNameAr}</span>
+                  <span className="text-base shrink-0">{r.match.awayFlag}</span>
+                </div>
+                <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded-full bg-[var(--gold)]/20 text-[var(--gold)] whitespace-nowrap">
+                  {r.points} نقطة
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={onClose}
+            className="w-full mt-2 text-xs font-bold py-2 rounded-lg border border-[var(--gold)]/50 text-[var(--gold)] hover:bg-[var(--gold)]/10"
+          >
+            إغلاق
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
